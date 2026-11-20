@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>センサー確認（傾き・息）</title>
+<style>
+  :root { --ink:#2b2622; --sub:#7a6f66; --paper:#f3ede4; --line:#d9cfc2; --ok:#3d7a5a; --ng:#b4543f; --accent:#a8643c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 20px 48px; background:var(--paper); color:var(--ink);
+         font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.7; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p.lead { margin:0 0 20px; color:var(--sub); font-size:14px; }
+  section { background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  button { font:inherit; font-weight:600; color:#fff; background:var(--accent); border:0; border-radius:999px;
+           padding:12px 22px; width:100%; }
+  button:disabled { opacity:.5; }
+  .status { margin-top:12px; font-weight:700; }
+  .ok { color:var(--ok); } .ng { color:var(--ng); } .wait { color:var(--sub); font-weight:400; }
+  .vals { font-variant-numeric:tabular-nums; font-size:14px; color:var(--sub); margin-top:6px; }
+  .level { position:relative; width:180px; height:180px; margin:14px auto 0; border-radius:50%;
+           border:1px solid var(--line); background:radial-gradient(circle,#fff 0,#f6f1ea 100%); }
+  .level::before, .level::after { content:""; position:absolute; background:var(--line); }
+  .level::before { left:50%; top:0; bottom:0; width:1px; } .level::after { top:50%; left:0; right:0; height:1px; }
+  .ball { position:absolute; left:50%; top:50%; width:26px; height:26px; margin:-13px; border-radius:50%;
+          background:var(--accent); box-shadow:0 3px 8px rgba(0,0,0,.2); }
+  .meter { height:14px; border-radius:7px; background:#eee6da; overflow:hidden; margin-top:12px; }
+  .meter > i { display:block; height:100%; width:0; background:var(--accent); }
+  .flame { text-align:center; font-size:64px; line-height:1; margin-top:12px; transition:transform .08s; transform-origin:50% 90%; }
+  .env { font-size:12px; color:var(--sub); word-break:break-all; }
+</style>
+</head>
+<body>
+<h1>センサー確認</h1>
+<p class="lead">スマホで開いて、下の2つのボタンを順に押してください。結果の文字（「取れています」など）をそのまま教えてもらえれば大丈夫です。</p>
+
+<section>
+  <h2>傾き</h2>
+  <button id="btnTilt">傾きを試す</button>
+  <div class="status wait" id="tiltStatus">まだ試していません</div>
+  <div class="vals" id="tiltVals">前後 —　左右 —</div>
+  <div class="level"><div class="ball" id="ball"></div></div>
+</section>
+
+<section>
+  <h2>息（マイク）</h2>
+  <button id="btnMic">息を試す</button>
+  <div class="status wait" id="micStatus">まだ試していません</div>
+  <div class="vals" id="micVals">音量 —　低い音の割合 —</div>
+  <div class="meter"><i id="micBar"></i></div>
+  <div class="flame" id="flame">🔥</div>
+  <div class="vals" id="micJudge">許可したあと、スマホの下側（マイク）に「フーッ」と吹いてみてください。次に「あー」と声を出して、判定が変わるか見てください。</div>
+</section>
+
+<section>
+  <h2>この端末の情報</h2>
+  <div class="env" id="env"></div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+function setStatus(el, cls, text){ el.className = 'status ' + cls; el.textContent = text; }
+
+$('env').textContent =
+  '安全な接続(https): ' + (window.isSecureContext ? 'はい' : 'いいえ') +
+  ' ／ 傾きの機能: ' + ('DeviceOrientationEvent' in window ? 'あり' : 'なし') +
+  ' ／ マイクの機能: ' + (navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? 'あり' : 'なし') +
+  ' ／ ' + navigator.userAgent;
+
+/* ---------- 傾き ---------- */
+let tiltGot = false;
+function onTilt(e){
+  if (e.beta === null || e.gamma === null) return;
+  if (!tiltGot){ tiltGot = true; setStatus($('tiltStatus'), 'ok', '傾きは取れています'); }
+  $('tiltVals').textContent = '前後 ' + e.beta.toFixed(0) + '°　左右 ' + e.gamma.toFixed(0) + '°';
+  const x = Math.max(-1, Math.min(1, e.gamma / 45));
+  const y = Math.max(-1, Math.min(1, (e.beta - 45) / 45));
+  $('ball').style.transform = 'translate(' + (x * 77) + 'px,' + (y * 77) + 'px)';
+}
+$('btnTilt').addEventListener('click', async () => {
+  const st = $('tiltStatus');
+  if (!('DeviceOrientationEvent' in window)){
+    setStatus(st, 'ng', '傾きは取れません（この端末・ブラウザに機能がありません）'); return;
+  }
+  try {
+    if (typeof DeviceOrientationEvent.requestPermission === 'function'){
+      const res = await DeviceOrientationEvent.requestPermission();   // iPhone はここで許可の確認が出る
+      if (res !== 'granted'){ setStatus(st, 'ng', '傾きは取れません（許可されませんでした）'); return; }
+    }
+    window.addEventListener('deviceorientation', onTilt);
+    setStatus(st, 'wait', '待っています…スマホを傾けてみてください');
+    setTimeout(() => { if (!tiltGot) setStatus(st, 'ng', '傾きは取れません（3秒待っても値が来ませんでした。パソコンではこの表示になります）'); }, 3000);
+  } catch (err){
+    setStatus(st, 'ng', '傾きは取れません（' + err.message + '）');
+  }
+});
+
+/* ---------- 息（マイク） ---------- */
+$('btnMic').addEventListener('click', async () => {
+  const st = $('micStatus');
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    setStatus(st, 'ng', 'マイクは使えません（https で開いていないか、機能がありません）'); return;
+  }
+  try {
+    // ブラウザの「雑音を消す機能」を切る。入れたままだと息まで消されることがある
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+    });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    const an = ctx.createAnalyser();
+    an.fftSize = 2048; an.smoothingTimeConstant = 0.5;
+    src.connect(an);
+    const freq = new Uint8Array(an.frequencyBinCount);
+    const time = new Uint8Array(an.fftSize);
+    const hzPerBin = ctx.sampleRate / an.fftSize;
+    setStatus(st, 'ok', 'マイクは使えています');
+    $('btnMic').disabled = true;
+    let breath = 0;
+    (function loop(){
+      an.getByteTimeDomainData(time);
+      an.getByteFrequencyData(freq);
+      let sum = 0;
+      for (let i = 0; i < time.length; i++){ const v = (time[i] - 128) / 128; sum += v * v; }
+      const rms = Math.sqrt(sum / time.length);
+      let low = 0, all = 0, peak = 0;
+      for (let i = 1; i < freq.length; i++){
+        const hz = i * hzPerBin; if (hz > 4000) break;
+        const v = freq[i]; all += v; if (hz < 300) low += v; if (hz >= 300 && v > peak) peak = v;
+      }
+      const lowRatio = all ? low / all : 0;
+      // 息 ＝ 音は大きいのに、低い音（風の雑音）が大半を占める
+      const loud = rms > 0.06;
+      const isBreath = loud && lowRatio > 0.38;
+      const isVoice = loud && !isBreath;
+      breath += ((isBreath ? Math.min(1, rms * 4) : 0) - breath) * 0.25;
+      $('micBar').style.width = Math.min(100, rms * 300) + '%';
+      $('micVals').textContent = '音量 ' + rms.toFixed(2) + '　低い音の割合 ' + (lowRatio * 100).toFixed(0) + '%';
+      $('micJudge').textContent = '判定：' + (isBreath ? '息っぽい' : isVoice ? '声・物音っぽい' : '静か');
+      $('flame').style.transform = 'scale(' + (1 + breath * 1.4) + ')';
+      requestAnimationFrame(loop);
+    })();
+  } catch (err){
+    setStatus(st, 'ng', 'マイクは使えません（' + (err.name === 'NotAllowedError' ? '許可されませんでした' : err.message) + '）');
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#f4eee5">
+<title>ろくろ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:#2e2823; --sub:#85786c; --paper:#f4eee5; --paper-deep:#e0d5c6; --line:rgba(46,40,35,.16);
+    --chip:rgba(255,255,255,.55); --btn:#2e2823; --btn-ink:#f7f1e8;
+    --mincho:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+    --sans:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+    --safe-b:env(safe-area-inset-bottom, 0px); --safe-t:env(safe-area-inset-top, 0px);
+  }
+  body.dark { --ink:#f6e9d8; --sub:#c9a98a; --line:rgba(246,233,216,.22); --chip:rgba(60,28,14,.5); --btn:#f6e9d8; --btn-ink:#2a140b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; background:var(--paper); color:var(--ink);
+               font-family:var(--sans); -webkit-user-select:none; user-select:none; overscroll-behavior:none; -webkit-touch-callout:none; }
+  .bg { position:fixed; inset:0; }
+  .bg.paper { background:radial-gradient(120% 90% at 50% 38%, #fbf8f2 0%, var(--paper) 45%, var(--paper-deep) 100%); }
+  .bg.kiln { background:radial-gradient(90% 70% at 50% 88%, #7a2a0a 0%, #3a1407 38%, #150a06 72%, #0a0605 100%); opacity:0; transition:opacity 1.4s ease; }
+  .bg.glow { background:radial-gradient(70% 55% at 50% 92%, rgba(255,120,30,.8) 0%, rgba(230,70,10,.3) 45%, rgba(200,40,0,0) 75%); opacity:0; mix-blend-mode:screen; }
+  body.kilnbg .bg.kiln { opacity:1; }
+  canvas#fire { position:fixed; left:0; bottom:0; width:100%; height:78%; opacity:0; filter:blur(14px) saturate(1.25); pointer-events:none; }
+  canvas#stage { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+  canvas#stage.touching { cursor:grabbing; }
+
+  .head { position:fixed; left:22px; top:calc(18px + var(--safe-t)); pointer-events:none; transition:color .8s; }
+  .head h1 { margin:0; font-family:var(--mincho); font-weight:700; font-size:24px; letter-spacing:.18em; }
+  .head .step { margin-top:6px; font-family:var(--mincho); font-size:13px; letter-spacing:.2em; color:var(--sub); transition:color .8s; }
+
+  .tools { position:fixed; right:16px; top:calc(16px + var(--safe-t)); display:flex; gap:8px; }
+  .chip { font:500 12px var(--sans); letter-spacing:.08em; color:var(--ink); background:var(--chip);
+          border:1px solid var(--line); border-radius:999px; padding:9px 14px; cursor:pointer;
+          -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:color .8s, background .8s, border-color .8s; }
+  .chip:active { filter:brightness(1.15); }
+
+  .temp { position:fixed; left:0; right:0; top:calc(74px + var(--safe-t)); text-align:center; pointer-events:none;
+          font-family:var(--mincho); color:var(--ink); opacity:0; transition:opacity .8s; }
+  .temp b { font-weight:500; font-size:44px; letter-spacing:.04em; font-variant-numeric:tabular-nums; }
+  .temp span { font-size:16px; margin-left:4px; color:var(--sub); }
+  .temp small { display:block; margin-top:2px; font-size:12px; letter-spacing:.3em; color:var(--sub); min-height:1.4em; }
+  body.s-kiln .temp { opacity:1; }
+
+  .dock { position:fixed; left:0; right:0; bottom:calc(20px + var(--safe-b)); display:flex; flex-direction:column; align-items:center; gap:14px;
+          pointer-events:none; padding:0 16px; }
+  .dock > * { pointer-events:auto; }
+  .hint { pointer-events:none; text-align:center; font-family:var(--mincho); font-size:14px; letter-spacing:.12em; line-height:1.95;
+          color:var(--ink); transition:opacity .8s, color .8s; max-width:34em; }
+  .hint.gone { opacity:0; }
+  .hint span { display:inline-block; padding:0 .5em; }
+  .hint .view { font-size:12px; color:var(--sub); }
+
+  .swatches { display:none; gap:10px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+  body.s-glaze .swatches { display:flex; }
+  .sw { width:52px; background:none; border:0; padding:0; cursor:pointer; font-family:var(--mincho); color:var(--sub); font-size:11px; letter-spacing:.1em; text-align:center; }
+  .sw i { display:block; width:38px; height:38px; margin:0 auto 5px; border-radius:50%; border:1px solid rgba(46,40,35,.2);
+          box-shadow:inset 0 -6px 10px rgba(0,0,0,.18), inset 0 5px 8px rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.12); transition:transform .2s; }
+  .sw.on { color:var(--ink); font-weight:700; }
+  .sw.on i { transform:scale(1.16); box-shadow:inset 0 -6px 10px rgba(0,0,0,.18), inset 0 5px 8px rgba(255,255,255,.35), 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
+
+  .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .next { font:700 15px var(--mincho); letter-spacing:.22em; color:var(--btn-ink); background:var(--btn); border:0; border-radius:999px;
+          padding:14px 30px 14px 34px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.18); transition:opacity .5s, transform .15s, background .8s, color .8s; }
+  .next:active { transform:scale(.97); }
+  .next.ghost { background:var(--chip); color:var(--ink); border:1px solid var(--line); box-shadow:none; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .hide { display:none !important; }
+  .fadeout { opacity:0; pointer-events:none !important; }
+
+  .caption { position:fixed; left:24px; bottom:calc(128px + var(--safe-b)); pointer-events:none; opacity:0; transform:translateY(6px);
+             transition:opacity 1.2s ease .4s, transform 1.2s ease .4s; font-family:var(--mincho); }
+  body.s-done .caption { opacity:1; transform:none; }
+  .caption .name { font-size:24px; font-weight:700; letter-spacing:.16em; }
+  .caption .spec { margin-top:8px; font-size:12px; letter-spacing:.12em; color:var(--sub); line-height:1.9; font-variant-numeric:tabular-nums; }
+  .caption .rule { width:28px; height:1px; background:var(--ink); margin:12px 0 0; opacity:.5; }
+
+  .warn { position:fixed; left:50%; top:calc(66px + var(--safe-t)); transform:translate(-50%,-8px); opacity:0; pointer-events:none;
+          font-family:var(--mincho); font-size:14px; letter-spacing:.14em; color:#fff; background:rgba(120,58,42,.92);
+          padding:8px 18px; border-radius:999px; transition:opacity .25s, transform .25s; white-space:nowrap; }
+  .warn.show { opacity:1; transform:translate(-50%,0); }
+
+  .finger { position:fixed; width:54px; height:54px; margin:-27px 0 0 -27px; border-radius:50%; pointer-events:none;
+            border:1px solid rgba(46,40,35,.28); background:radial-gradient(circle, rgba(255,255,255,.35), rgba(255,255,255,0) 70%);
+            opacity:0; transition:opacity .2s; }
+  .finger.on { opacity:1; }
+  body.dark .finger { border-color:rgba(255,220,180,.4); background:radial-gradient(circle, rgba(255,190,120,.3), rgba(255,160,80,0) 70%); }
+
+  .intro { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+           background:rgba(244,238,229,.78); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); transition:opacity .9s ease; padding:24px; }
+  .intro h2 { margin:0; font-family:var(--mincho); font-weight:700; font-size:54px; letter-spacing:.3em; text-indent:.3em; }
+  .intro p { margin:26px 0 0; font-family:var(--mincho); font-size:16px; letter-spacing:.2em; line-height:2.1; }
+  .intro p.sub { margin-top:6px; color:var(--sub); font-size:13px; }
+  .intro .next { margin-top:40px; }
+  .intro small { margin-top:22px; font-size:11px; letter-spacing:.1em; color:var(--sub); line-height:1.8; }
+
+  .veil { position:fixed; inset:0; background:#0d0705; opacity:0; pointer-events:none; transition:opacity .55s ease; }
+  .veil.on { opacity:1; }
+
+  @media (max-width:560px) {
+    .head h1 { font-size:21px; } .hint { font-size:13px; } .temp b { font-size:38px; }
+    .caption { left:20px; bottom:calc(140px + var(--safe-b)); } .caption .name { font-size:21px; }
+    .sw { width:46px; } .sw i { width:34px; height:34px; }
+  }
+</style>
+</head>
+<body class="s-intro">
+<div class="bg paper"></div>
+<div class="bg kiln"></div>
+<canvas id="fire" width="120" height="180"></canvas>
+<div class="bg glow" id="glow"></div>
+<canvas id="stage"></canvas>
+
+<div class="head">
+  <h1>ろくろ</h1>
+  <div class="step" id="step">一　形をつくる</div>
+</div>
+
+<div class="tools">
+  <button class="chip" id="btnSound" type="button">音　入</button>
+  <button class="chip" id="btnReset" type="button">はじめから</button>
+</div>
+
+<div class="temp" id="temp"><b id="tempNum">20</b><span>℃</span><small id="tempWord"></small></div>
+
+<div class="caption" id="caption">
+  <div class="name" id="capName"></div>
+  <div class="rule"></div>
+  <div class="spec" id="capSpec"></div>
+</div>
+
+<div class="dock">
+  <div class="hint" id="hint"></div>
+  <div class="swatches" id="swatches"></div>
+  <div class="row">
+    <button class="next ghost hide" id="btnAgain" type="button">もういちど</button>
+    <button class="next" id="btnNext" type="button">釉薬をかける</button>
+  </div>
+</div>
+
+<div class="warn" id="warn">へたってしまった</div>
+<div class="finger" id="finger"></div>
+<div class="veil" id="veil"></div>
+
+<div class="intro" id="intro">
+  <h2>ろくろ</h2>
+  <p>土をかたちにして、釉薬をかけ、火で焼く。</p>
+  <p class="sub">同じ器は、二度とできません。</p>
+  <button class="next" id="btnStart" type="button">はじめる</button>
+  <small>スマートフォンでは、本体の傾きと、息を使います。<br>音が出ます。</small>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  const FAST = /[?&]fast\b/.test(location.search);          // 動作確認用：描画を軽くする
+  function seeded(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+
+  /* =====================================================================
+     段階 ―― intro → shape（形）→ glaze（釉薬）→ kiln（焼く）→ cool（冷ます）→ done（できあがり）
+     ===================================================================== */
+  let stage = 'intro';
+  function setStageClass(s) {
+    document.body.className = document.body.className.replace(/\bs-\w+/g, '').trim() + ' s-' + s;
+  }
+
+  /* =====================================================================
+     粘土の形 ―― 器を「高さごとの半径」の並びで持つ（回転体なのでこれで足りる）。1.0 = 10cm
+     ===================================================================== */
+  const N = 72;                 // 高さ方向の分割数
+  const T_SLUMP = 0.05;         // 壁がこれより薄くなると、へたる
+  const H_MIN = 0.3, H_MAX = 2.6, R_MIN = 0.1, R_MAX = 1.45;
+  // r / H が「いまの形」、rt / Ht が「指が押して向かわせている形」。いまの形は少し遅れて追いかける（じわっと寄る）
+  const clay = { H: 0, Ht: 0, r: new Float32Array(N), rt: new Float32Array(N), ridge: new Float32Array(N), V: 0, t: 0.2, off: 0 };
+
+  function surfaceArea(H, r) {
+    let a = Math.PI * r[0] * r[0];
+    const dy = H / (N - 1);
+    for (let i = 0; i < N - 1; i++) a += Math.PI * (r[i] + r[i + 1]) * Math.hypot(dy, r[i + 1] - r[i]);
+    return a;
+  }
+  function resetClay() {
+    clay.H = clay.Ht = 0.85;
+    for (let i = 0; i < N; i++) {
+      const s = i / (N - 1);
+      clay.r[i] = clay.rt[i] = 0.74 - 0.05 * s + 0.035 * Math.sin(s * Math.PI);
+      clay.ridge[i] = 0;
+    }
+    clay.t = 0.2; clay.off = 0;
+    clay.V = surfaceArea(clay.H, clay.r) * clay.t;   // 粘土の量。以後これを保つ（のばすと薄くなる）
+  }
+  resetClay();
+
+  /* =====================================================================
+     three.js の舞台
+     ===================================================================== */
+  const canvas = $('stage');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  const PIXEL_RATIO = FAST ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(PIXEL_RATIO);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 60);
+
+  const hemi = new THREE.HemisphereLight(0xfff6ea, 0xb7a591, 0.82); scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xfffaf2, 0.95);
+  key.position.set(-3.2, 6.2, 3.4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(FAST ? 512 : 2048, FAST ? 512 : 2048);
+  key.shadow.camera.left = -3.2; key.shadow.camera.right = 3.2;
+  key.shadow.camera.top = 3.6;   key.shadow.camera.bottom = -3.2;
+  key.shadow.camera.near = 1;    key.shadow.camera.far = 16;
+  key.shadow.bias = -0.0006; key.shadow.normalBias = 0.03; key.shadow.radius = 5;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffe2c4, 0.28); fill.position.set(4, 2.2, 2.5); scene.add(fill);
+  const fireBack = new THREE.PointLight(0xff6a1a, 0, 14, 1.6); fireBack.position.set(0, 0.5, -2.6); scene.add(fireBack);
+  const fireFront = new THREE.PointLight(0xff8a3a, 0, 12, 1.6); fireFront.position.set(1.2, -0.1, 3.0); scene.add(fireFront);
+
+  /* ---- 映り込み用の空（やわらかい光の箱）。釉薬のつやはこれが映って見える ---- */
+  (function makeEnvironment() {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+    const g = c.getContext('2d');
+    const sky = g.createLinearGradient(0, 0, 0, 256);
+    sky.addColorStop(0, '#8f8a84'); sky.addColorStop(0.4, '#6b655e'); sky.addColorStop(0.56, '#4a443e'); sky.addColorStop(1, '#2c2824');
+    g.fillStyle = sky; g.fillRect(0, 0, 512, 256);
+    const win = (x, y, w, h, a) => {                       // 窓あかり
+      const grd = g.createRadialGradient(x, y, 0, x, y, w);
+      grd.addColorStop(0, 'rgba(255,255,255,' + a + ')'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+      g.save(); g.translate(x, y); g.scale(1, h / w); g.translate(-x, -y); g.fillStyle = grd; g.fillRect(x - w, y - w, w * 2, w * 2); g.restore();
+    };
+    win(120, 66, 80, 52, 1); win(120, 66, 40, 26, 1); win(384, 58, 52, 64, 0.9); win(250, 16, 150, 26, 0.6);
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping; tex.encoding = THREE.sRGBEncoding;
+    const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromEquirectangular(tex).texture;
+    tex.dispose(); pm.dispose();
+  })();
+
+  /* ---- 質感（すべてその場で描く。画像ファイルは使わない） ---- */
+  const clayCanvas = document.createElement('canvas'); clayCanvas.width = 1024; clayCanvas.height = 512;
+  (function paintClay() {
+    const c = clayCanvas, g = c.getContext('2d'), rnd = seeded(7);
+    g.fillStyle = '#a8927c'; g.fillRect(0, 0, c.width, c.height);
+    for (let i = 0; i < 40; i++) {                       // 周方向のむら（回転が見える）
+      const x = rnd() * c.width, y = rnd() * c.height, w = 50 + rnd() * 170, h = 70 + rnd() * 240, dark = rnd() > 0.5;
+      for (const ox of [-c.width, 0, c.width]) {
+        const grd = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+        grd.addColorStop(0, dark ? 'rgba(92,74,58,.26)' : 'rgba(220,206,188,.24)');
+        grd.addColorStop(1, dark ? 'rgba(92,74,58,0)' : 'rgba(220,206,188,0)');
+        g.save(); g.translate(x + ox, y); g.scale(w, h); g.fillStyle = grd; g.fillRect(-1, -1, 2, 2); g.restore();
+      }
+    }
+    for (let i = 0; i < 16; i++) {                       // 泥水のたれ
+      const x = rnd() * c.width, y = rnd() * c.height * 0.7, len = 60 + rnd() * 200, w = 3 + rnd() * 9;
+      const grd = g.createLinearGradient(0, y, 0, y + len);
+      grd.addColorStop(0, 'rgba(206,190,170,0)'); grd.addColorStop(0.3, 'rgba(206,190,170,.3)'); grd.addColorStop(1, 'rgba(206,190,170,0)');
+      g.fillStyle = grd; g.fillRect(x, y, w, len);
+    }
+    for (let i = 0; i < 260; i++) {                      // ろくろ目
+      const y = rnd() * c.height;
+      g.strokeStyle = rnd() > 0.5 ? 'rgba(70,56,44,' + (0.04 + rnd() * 0.09) + ')' : 'rgba(232,220,204,' + (0.04 + rnd() * 0.08) + ')';
+      g.lineWidth = 0.6 + rnd() * 1.8;
+      g.beginPath(); g.moveTo(0, y); g.lineTo(c.width, y); g.stroke();
+    }
+    for (let i = 0; i < 900; i++) {
+      g.fillStyle = 'rgba(80,64,50,' + (rnd() * 0.08) + ')';
+      g.fillRect(rnd() * c.width, rnd() * c.height, 1 + rnd() * 2, 1 + rnd() * 2);
+    }
+  })();
+  const clayTex = new THREE.CanvasTexture(clayCanvas);
+  clayTex.wrapS = THREE.RepeatWrapping; clayTex.encoding = THREE.sRGBEncoding; clayTex.anisotropy = 4;
+
+  function makeWheelTexture() {
+    const S = 1024, c = document.createElement('canvas'); c.width = c.height = S;
+    const g = c.getContext('2d'), rnd = seeded(23), m = S / 2;
+    g.fillStyle = '#cfc7bb'; g.fillRect(0, 0, S, S);
+    for (let r = 4; r < m; r += 2 + rnd() * 5) {
+      g.strokeStyle = rnd() > 0.5 ? 'rgba(255,255,255,' + (0.05 + rnd() * 0.12) + ')' : 'rgba(90,80,70,' + (0.04 + rnd() * 0.1) + ')';
+      g.lineWidth = 0.6 + rnd() * 1.4;
+      g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.stroke();
+    }
+    for (let i = 0; i < 26; i++) {
+      const a0 = rnd() * Math.PI * 2, len = 0.3 + rnd() * 1.6, r = m * (0.25 + rnd() * 0.7);
+      g.strokeStyle = 'rgba(150,128,106,' + (0.12 + rnd() * 0.28) + ')';
+      g.lineWidth = 3 + rnd() * 16; g.lineCap = 'round';
+      g.beginPath(); g.arc(m, m, r, a0, a0 + len); g.stroke();
+    }
+    for (let i = 0; i < 60; i++) {
+      const a = rnd() * Math.PI * 2, r = m * (0.3 + rnd() * 0.68), s = 2 + rnd() * 9;
+      g.fillStyle = 'rgba(140,118,98,' + (0.15 + rnd() * 0.3) + ')';
+      g.beginPath(); g.ellipse(m + Math.cos(a) * r, m + Math.sin(a) * r, s, s * (0.5 + rnd() * 0.5), a, 0, Math.PI * 2); g.fill();
+    }
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    return t;
+  }
+
+  /* ---- 台。tilt（傾き）> spin（回転）> 器 の入れ子 ---- */
+  const tilt = new THREE.Group(); scene.add(tilt);
+  const spin = new THREE.Group(); tilt.add(spin);
+
+  const wheelTop = new THREE.MeshStandardMaterial({ map: makeWheelTexture(), roughness: 0.48, metalness: 0.25, envMapIntensity: 0.5 });
+  const wheelSide = new THREE.MeshStandardMaterial({ color: 0xb9b0a3, roughness: 0.4, metalness: 0.4, envMapIntensity: 0.5 });
+  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.1, 128), [wheelSide, wheelTop, wheelSide]);
+  wheel.position.y = -0.05; wheel.receiveShadow = true; wheel.castShadow = true;
+  spin.add(wheel);
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.4, 0.5, 64),
+    new THREE.MeshStandardMaterial({ color: 0x8e8478, roughness: 0.7, metalness: 0.1, envMapIntensity: 0.4 }));
+  pedestal.position.y = -0.35; pedestal.castShadow = true; tilt.add(pedestal);
+
+  // 窯の棚板、兼、できあがりを置く台
+  const slab = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 0.08, 96),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(0x4a3a2c).convertSRGBToLinear(), roughness: 0.74, metalness: 0, envMapIntensity: 0.35 }));
+  slab.position.y = -0.04; slab.receiveShadow = true; slab.castShadow = true; slab.visible = false; scene.add(slab);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.16 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.6; ground.receiveShadow = true; scene.add(ground);
+
+  /* ---- 器 ---- */
+  const potMat = new THREE.MeshStandardMaterial({
+    map: clayTex, bumpMap: clayTex, bumpScale: 0.006, roughness: 0.6, metalness: 0, side: THREE.DoubleSide,
+    vertexColors: true, envMapIntensity: 0.6, emissive: 0x000000
+  });
+  const pot = new THREE.Mesh(new THREE.BufferGeometry(), potMat);
+  pot.castShadow = true; pot.receiveShadow = true;
+  spin.add(pot);
+
+  let P_COUNT = 0, INNER_START = 0;      // 断面の点の数と、内側が始まる番号（どこに触れたかの判定に使う）
+  function rebuild() {
+    const { H, r, ridge } = clay;
+    const t = clay.t = clamp(clay.V / surfaceArea(H, r), 0.035, 0.34);
+    const pts = [];
+    const dy = H / (N - 1);
+    pts.push(new THREE.Vector2(0.0001, 0));
+    for (let i = 0; i < N; i++) pts.push(new THREE.Vector2(r[i] + ridge[i], i * dy));       // 外側を下から上へ
+    const ro = r[N - 1] + ridge[N - 1], ri = Math.max(ro - t, 0.02), cx = (ro + ri) / 2, rr = (ro - ri) / 2;
+    for (let k = 1; k < 6; k++) {                                                            // 口のまるみ
+      const a = (k / 6) * Math.PI;
+      pts.push(new THREE.Vector2(cx + Math.cos(a) * rr, H + Math.sin(a) * rr * 0.9));
+    }
+    const floorY = Math.min(t * 1.15, H * 0.5);
+    const innerStart = INNER_START = pts.length;
+    for (let i = N - 1; i >= 0; i--) {                                                       // 内側を上から下へ
+      const y = i * dy; if (y <= floorY) break;
+      pts.push(new THREE.Vector2(Math.max(r[i] - ridge[i] * 0.6 - t, 0.02), y));
+    }
+    const fi = clamp(Math.round(floorY / dy), 0, N - 1);
+    pts.push(new THREE.Vector2(Math.max(r[fi] - t, 0.02) * 0.92, floorY));
+    pts.push(new THREE.Vector2(0.0001, floorY));
+    const geo = new THREE.LatheGeometry(pts, 112);
+    // 内側は底へ向かって暗くする（のぞき込んだときの奥行き）
+    const P = P_COUNT = pts.length, cnt = geo.attributes.position.count, col = new Float32Array(cnt * 3);
+    for (let k = 0; k < cnt; k++) {
+      const j = k % P;
+      let c = 1;
+      if (j >= innerStart) c = 0.5 + 0.42 * smoothstep(floorY, H, pts[j].y);
+      col[k * 3] = c; col[k * 3 + 1] = c * 0.985; col[k * 3 + 2] = c * 0.97;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    pot.geometry.dispose();
+    pot.geometry = geo;
+  }
+  rebuild();
+
+  /* =====================================================================
+     釉薬 ―― 器の外側を格子に見立て、かけた釉薬が重力で流れる
+     ===================================================================== */
+  const GLAZES = [
+    { id: 'hagi',    name: '白萩', label: '白萩釉', rgb: [0.93, 0.91, 0.87] },
+    { id: 'seiji',   name: '青磁', label: '青磁',   rgb: [0.60, 0.77, 0.69] },
+    { id: 'oribe',   name: '織部', label: '織部釉', rgb: [0.16, 0.42, 0.30] },
+    { id: 'ruri',    name: '瑠璃', label: '瑠璃釉', rgb: [0.11, 0.23, 0.56] },
+    { id: 'ame',     name: '飴',   label: '飴釉',   rgb: [0.66, 0.37, 0.11] },
+    { id: 'tenmoku', name: '天目', label: '天目釉', rgb: [0.11, 0.075, 0.06] }
+  ];
+  let glazeSel = 2;
+  const GW = 192, GH = 96, GN = GW * GH;                    // 横＝まわり方向、縦＝口（0）から底（GH-1）
+  const gA = new Float32Array(GN), gR = new Float32Array(GN), gG = new Float32Array(GN), gB = new Float32Array(GN), gWet = new Float32Array(GN);
+  const dA = new Float32Array(GN), dR = new Float32Array(GN), dG = new Float32Array(GN), dB = new Float32Array(GN), dW = new Float32Array(GN);
+  const sinT = new Float32Array(GW), cosT = new Float32Array(GW), colNoise = new Float32Array(GW), slope = new Float32Array(GH), ridgeFac = new Float32Array(GH);
+  for (let u = 0; u < GW; u++) { sinT[u] = Math.sin(u / GW * Math.PI * 2); cosT[u] = Math.cos(u / GW * Math.PI * 2); }
+  const inner = { a: 0, r: 0, g: 0, b: 0 };                 // 内側は全体にまわる
+  const used = {};                                          // 使った釉薬と量
+  let glazeWet = false, glazeDirty = true;
+
+  function clearGlaze() {
+    gA.fill(0); gR.fill(0); gG.fill(0); gB.fill(0); gWet.fill(0);
+    inner.a = 0; for (const k in used) delete used[k];
+    glazeWet = false; glazeDirty = true;
+  }
+  function prepareGlazeSurface() {                          // 形が決まった時点で、流れやすさを面ごとに決める
+    const rnd = seeded(Math.floor(clay.H * 1e5 + clay.r[20] * 1e4) + 11);
+    let n = 1;
+    for (let u = 0; u < GW; u++) { n = n * 0.72 + (0.55 + rnd() * 0.9) * 0.28; colNoise[u] = n; }
+    for (let k = 0; k < 6; k++) colNoise[Math.floor(rnd() * GW)] *= 1.6;           // たれやすい筋
+    const dy = clay.H / (N - 1);
+    for (let v = 0; v < GH; v++) {
+      const f = (1 - v / (GH - 1)) * (N - 1), i = clamp(Math.round(f), 1, N - 2);
+      const dr = (clay.r[i + 1] - clay.r[i - 1]) / 2;
+      slope[v] = dy / Math.hypot(dy, dr);                                           // 立った面ほど 1、寝た面ほど 0
+      ridgeFac[v] = 1 - 0.32 * clamp(clay.ridge[i] / 0.011, -1, 1);                  // 出っぱりは薄く、溝にはたまる
+    }
+  }
+  function pourAt(uf, vf, dt) {
+    const g = GLAZES[glazeSel], RU = 9, RV = 5;
+    for (let dv = -RV * 2; dv <= RV * 2; dv++) {
+      const v = Math.round(vf) + dv; if (v < 0 || v >= GH) continue;
+      for (let du = -RU * 2; du <= RU * 2; du++) {
+        const w = Math.exp(-((du * du) / (RU * RU) + (dv * dv) / (RV * RV)) * 1.5); if (w < 0.02) continue;
+        const u = ((Math.round(uf) + du) % GW + GW) % GW, k = v * GW + u, amt = 2.8 * dt * w;
+        gA[k] += amt; gR[k] += g.rgb[0] * amt; gG[k] += g.rgb[1] * amt; gB[k] += g.rgb[2] * amt; gWet[k] = 1;
+      }
+    }
+    used[g.id] = (used[g.id] || 0) + dt;
+    glazeWet = true; glazeDirty = true;
+  }
+  function pourInside(uf, dt) {
+    const g = GLAZES[glazeSel], t = Math.min(1, dt * 2.2);
+    if (inner.a < 0.02) { inner.r = g.rgb[0]; inner.g = g.rgb[1]; inner.b = g.rgb[2]; }
+    else { inner.r = lerp(inner.r, g.rgb[0], t); inner.g = lerp(inner.g, g.rgb[1], t); inner.b = lerp(inner.b, g.rgb[2], t); }
+    inner.a = Math.min(1, inner.a + dt * 1.6);
+    pourAt(uf, 0, dt * 0.5);                                // 口からあふれて外へ
+    used[g.id] = (used[g.id] || 0) + dt;
+  }
+  // lx, lz：器から見た「傾いている向き」。mob：流れやすさ（窯の中で釉薬が溶けたときにも使う）
+  function stepGlaze(dt, lx, lz, mob) {
+    const HOLD = 0.2;
+    dA.fill(0); dR.fill(0); dG.fill(0); dB.fill(0); dW.fill(0);
+    let any = false;
+    for (let v = 0; v < GH; v++) {
+      const sl = 0.25 + 0.75 * slope[v];
+      for (let u = 0; u < GW; u++) {
+        const k = v * GW + u, w = gWet[k]; if (w <= 0.01) continue;
+        const a = gA[k], m = (a - HOLD) * Math.min(1, w) * mob; if (m <= 0.002) continue;
+        any = true;
+        const av = clamp(1 + 0.8 * (lx * sinT[u] + lz * cosT[u]), 0.15, 2.2) * sl * colNoise[u];
+        const au = lx * cosT[u] - lz * sinT[u];
+        const fv = Math.min(0.6, 13 * av * dt), fu = Math.min(0.3, 9 * Math.abs(au) * dt);
+        const rv = m * fv / a, ru = m * fu / a, out = rv + ru;
+        if (v < GH - 1) { const k2 = k + GW; dA[k2] += a * rv; dR[k2] += gR[k] * rv; dG[k2] += gG[k] * rv; dB[k2] += gB[k] * rv; if (w > dW[k2]) dW[k2] = w * 0.985; }
+        if (ru > 0) { const k3 = v * GW + ((u + (au > 0 ? 1 : GW - 1)) % GW); dA[k3] += a * ru; dR[k3] += gR[k] * ru; dG[k3] += gG[k] * ru; dB[k3] += gB[k] * ru; if (w > dW[k3]) dW[k3] = w * 0.985; }
+        dA[k] -= a * out; dR[k] -= gR[k] * out; dG[k] -= gG[k] * out; dB[k] -= gB[k] * out;
+      }
+    }
+    const dry = dt * 0.11;
+    for (let k = 0; k < GN; k++) {
+      gA[k] += dA[k]; gR[k] += dR[k]; gG[k] += dG[k]; gB[k] += dB[k];
+      const w = Math.max(gWet[k] - dry, dW[k]); gWet[k] = w > 0 ? w : 0;
+    }
+    if (any) glazeDirty = true;
+    glazeWet = any;
+  }
+
+  /* ---- 釉薬を器の表面の絵に描き出す ---- */
+  const CW = 512, CH = 512, TV = 256;
+  const compCanvas = document.createElement('canvas'); compCanvas.width = CW; compCanvas.height = CH;
+  const compCtx = compCanvas.getContext('2d');
+  const compTex = new THREE.CanvasTexture(compCanvas); compTex.wrapS = THREE.RepeatWrapping; compTex.encoding = THREE.sRGBEncoding; compTex.anisotropy = 4;
+  const glazeCanvas = document.createElement('canvas'); glazeCanvas.width = GW; glazeCanvas.height = TV;
+  const glazeCtx = glazeCanvas.getContext('2d'), glazeImg = glazeCtx.createImageData(GW, TV);
+  const roughCanvas = document.createElement('canvas'); roughCanvas.width = 256; roughCanvas.height = 256;
+  const roughCtx = roughCanvas.getContext('2d');
+  const roughTex = new THREE.CanvasTexture(roughCanvas); roughTex.wrapS = THREE.RepeatWrapping;
+  const maskCanvas = document.createElement('canvas'); maskCanvas.width = GW; maskCanvas.height = TV;
+  const maskCtx = maskCanvas.getContext('2d'), maskImg = maskCtx.createImageData(GW, TV);
+  const speckCanvas = document.createElement('canvas'); speckCanvas.width = CW; speckCanvas.height = CH;
+  (function () {                                            // 鉄粉（焼くと出る小さな黒点）
+    const g = speckCanvas.getContext('2d'), rnd = seeded(91);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, CW, CH);
+    for (let i = 0; i < 420; i++) {
+      const s = 0.5 + rnd() * rnd() * 2.6;
+      g.fillStyle = 'rgba(70,40,20,' + (0.25 + rnd() * 0.5) + ')';
+      g.beginPath(); g.arc(rnd() * CW, rnd() * CH, s, 0, Math.PI * 2); g.fill();
+    }
+  })();
+
+  const fired = { m: 0, peak: 20, soak: 0, blow: 0, over: 0, flashes: [] };     // 焼きの記録（m：釉薬の溶け具合 0〜1）
+  function composite() {
+    const m = fired.m, over = fired.over;
+    // 素地：素焼きの色 → 焼くと締まった土の色へ
+    const heatK = smoothstep(900, 1380, fired.peak);
+    const cr = lerp(lerp(214, 204, m), 150, heatK * m), cg = lerp(lerp(180, 166, m), 92, heatK * m), cb = lerp(lerp(152, 130, m), 62, heatK * m);
+    compCtx.globalCompositeOperation = 'source-over'; compCtx.globalAlpha = 1;
+    compCtx.drawImage(clayCanvas, 0, 0, CW, CH);
+    compCtx.globalAlpha = 0.8; compCtx.fillStyle = 'rgb(' + (cr | 0) + ',' + (cg | 0) + ',' + (cb | 0) + ')'; compCtx.fillRect(0, 0, CW, CH);
+    for (const f of fired.flashes) {                         // 火色（炎が当たった所の赤み）
+      for (const ox of [-CW, 0, CW]) {
+        const grd = compCtx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        grd.addColorStop(0, 'rgba(' + f.c + ',' + (f.a * m) + ')'); grd.addColorStop(1, 'rgba(' + f.c + ',0)');
+        compCtx.save(); compCtx.globalAlpha = 1; compCtx.translate(f.x + ox, f.y); compCtx.scale(f.w, f.h); compCtx.fillStyle = grd; compCtx.fillRect(-1, -1, 2, 2); compCtx.restore();
+      }
+    }
+    compCtx.globalAlpha = 1;
+
+    // 釉薬の層
+    const d = glazeImg.data, md = maskImg.data, P1 = P_COUNT - 1;
+    const kRaw = 3.6, kFired = 3.4, darken = 0.4 * m + 0.25 * over;
+    for (let y = 0; y < TV; y++) {
+      const j = (1 - y / (TV - 1)) * P1;
+      let mode = 0, f0 = 0, v0 = 0, v1 = 0, thin = 1;
+      if (j >= 1 && j <= N) {                                // 外側
+        mode = 1; const gv = (1 - (j - 1) / (N - 1)) * (GH - 1); v0 = Math.floor(gv); v1 = Math.min(GH - 1, v0 + 1); f0 = gv - v0;
+        thin = lerp(ridgeFac[v0], ridgeFac[v1], f0) * (0.72 + 0.28 * smoothstep(0, 3.5, gv)) * smoothstep(GH - 1, GH - 5, gv);   // 口の角は薄く、高台はぬぐう
+      } else if (j > N) mode = 2;                            // 口の上と内側
+      for (let x = 0; x < GW; x++) {
+        const o = (y * GW + x) * 4;
+        let A = 0, r = 0, g = 0, b = 0;
+        if (mode === 1) {
+          const k0 = v0 * GW + x, k1 = v1 * GW + x;
+          A = lerp(gA[k0], gA[k1], f0);
+          if (A > 0.001) { r = lerp(gR[k0], gR[k1], f0) / A; g = lerp(gG[k0], gG[k1], f0) / A; b = lerp(gB[k0], gB[k1], f0) / A; }
+          A *= thin;
+        } else if (mode === 2) {
+          const top = gA[x], ia = inner.a * 1.3;
+          if (j < INNER_START && top * 0.75 > ia) { A = top * 0.75; r = gR[x] / top; g = gG[x] / top; b = gB[x] / top; }
+          else { A = ia; r = inner.r; g = inner.g; b = inner.b; }
+        }
+        if (A <= 0.001) { d[o + 3] = 0; md[o + 3] = 0; continue; }
+        const dk = 1 - darken * smoothstep(0.7, 2.6, A);
+        const fr = r * dk, fg = g * dk, fb = b * dk;                                   // 焼けた色（厚い所は深く）
+        const rr = lerp(r, 0.93, 0.5), rg = lerp(g, 0.91, 0.5), rb = lerp(b, 0.88, 0.5);   // 生の釉薬は粉っぽく白い
+        const alpha = lerp(1 - Math.exp(-kRaw * A), 1 - Math.exp(-kFired * A), m);
+        d[o] = lerp(rr, fr, m) * 255; d[o + 1] = lerp(rg, fg, m) * 255; d[o + 2] = lerp(rb, fb, m) * 255; d[o + 3] = alpha * 255;
+        const rough = lerp(0.94, 0.1 + 0.25 * (1 - smoothstep(0.3, 1.2, A)), m) * 255;  // 溶けるとつやが出る
+        md[o] = md[o + 1] = md[o + 2] = rough; md[o + 3] = alpha * 255;
+      }
+    }
+    glazeCtx.putImageData(glazeImg, 0, 0);
+    compCtx.drawImage(glazeCanvas, 0, 0, CW, CH);
+    if (m > 0.15) {
+      compCtx.globalCompositeOperation = 'multiply'; compCtx.globalAlpha = 0.4 * m;
+      compCtx.drawImage(speckCanvas, 0, 0); compCtx.globalCompositeOperation = 'source-over'; compCtx.globalAlpha = 1;
+    }
+    compTex.needsUpdate = true;
+
+    const base = Math.round(lerp(0.93, 0.78, m) * 255);
+    roughCtx.fillStyle = 'rgb(' + base + ',' + base + ',' + base + ')'; roughCtx.fillRect(0, 0, 256, 256);
+    maskCtx.putImageData(maskImg, 0, 0);
+    roughCtx.drawImage(maskCanvas, 0, 0, 256, 256);
+    roughTex.needsUpdate = true;
+    glazeDirty = false;
+  }
+
+  /* =====================================================================
+     指でさわる（形をつくる）
+     外側にふれる → 押さえているあいだ、すぼまる／内側にふれる → 広がる／押さえたまま上下 → のびる・ちぢむ
+     ===================================================================== */
+  const ray = new THREE.Raycaster();
+  const ndc = new THREE.Vector2(), axisPt = new THREE.Vector3();
+  function hitPot(x, y) {
+    const b = canvas.getBoundingClientRect();
+    ndc.set(((x - b.left) / b.width) * 2 - 1, -((y - b.top) / b.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const h = ray.intersectObject(pot, false)[0];
+    if (!h || !h.uv) return null;
+    const j = h.uv.y * (P_COUNT - 1);
+    const kind = j >= INNER_START - 0.5 ? 'in' : (j > N + 0.5 ? 'rim' : 'out');
+    return { kind, y: clamp(h.point.y, 0, clay.H), u: h.uv.x, j };
+  }
+  function axisScreenX(y) {
+    axisPt.set(0, y, 0).project(camera);
+    return (axisPt.x * 0.5 + 0.5) * window.innerWidth;
+  }
+
+  let contact = null;       // 形づくり中の指 { id, kind, y, hold, boost, x, yPx }
+  let strokes = 0, wet = 0, friction = 0, warnTimer = 0, slumpCool = 0, camDist = 6;
+  const worldPerPx = () => (2 * camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / window.innerHeight;
+
+  function press(dt) {
+    const c = contact, { rt, ridge } = clay;
+    c.hold += dt;
+    const idx = (c.y / clay.H) * (N - 1);
+    if (c.kind !== 'rim') {
+      const dir = c.kind === 'out' ? -1 : 1;
+      const amt = 0.24 * smoothstep(0, 0.35, c.hold) * dt + c.boost;       // 押さえ始めはそっと、だんだん効く
+      const sig = (0.25 / clay.H) * (N - 1);                               // 指のあたる幅（約5cm）
+      for (let i = 0; i < N; i++) {
+        const d = i - idx, w = Math.exp(-(d * d) / (2 * sig * sig));
+        if (w < 0.003) continue;
+        const foot = 0.15 + 0.85 * smoothstep(0, 0.14, (i / (N - 1)) * clay.H);   // 底は台に張りついて動きにくい
+        rt[i] = clamp(rt[i] + dir * amt * w * foot, R_MIN, R_MAX);
+        const g = Math.exp(-(d * d) / 1.3);                                // 指の跡（ろくろ目）
+        ridge[i] += (dir * 0.011 * g - ridge[i] * g) * Math.min(1, dt * 5);
+      }
+      const k = 1 - Math.exp(-dt * 5);
+      const i0 = Math.max(1, Math.floor(idx - sig * 3)), i1 = Math.min(N - 2, Math.ceil(idx + sig * 3));
+      for (let i = i0; i <= i1; i++) rt[i] += 0.5 * k * ((rt[i - 1] + rt[i + 1]) / 2 - rt[i]);
+      if (c.boost > 0.012) clay.off = Math.min(1, clay.off + (c.boost - 0.012) * 4);    // 乱暴に押すと芯がぶれる
+      else if (c.hold > 0.5) clay.off = Math.max(0, clay.off - dt * 0.22);              // じっと当てると芯が戻る
+    }
+    c.boost = 0;
+  }
+  function toast(text, ms) {
+    const w = $('warn'); w.textContent = text; w.classList.add('show');
+    clearTimeout(warnTimer); warnTimer = setTimeout(() => w.classList.remove('show'), ms || 1800);
+  }
+  function slump() {                               // 薄くしすぎ・ぶれすぎ → へたる
+    slumpCool = 1.8;
+    clay.Ht = Math.max(H_MIN, clay.H * 0.6);
+    for (let i = 0; i < N; i++) {
+      const s = i / (N - 1);
+      clay.rt[i] = clamp(clay.rt[i] * (1 + 0.22 * Math.sin(Math.PI * s)) + (Math.random() - 0.5) * 0.05 * s, R_MIN, R_MAX);
+      clay.ridge[i] = clamp(clay.ridge[i] + (Math.random() - 0.5) * 0.012, -0.014, 0.014);
+    }
+    clay.off = Math.min(1, clay.off + 0.45);
+    toast('へたってしまった');
+  }
+
+  /* =====================================================================
+     見る角度・傾き・ポインタ
+     ===================================================================== */
+  const view = { pitch: 24, zoom: 1, to: null };            // pitch：見下ろす角度（度）。to：なめらかに向かう先
+  const PITCH_MIN = 6, PITCH_MAX = 70, ZOOM_MIN = 0.6, ZOOM_MAX = 2.4;
+  const lean = { x: 0, z: 0, dragX: 0, dragZ: 0 };          // 器の傾き（釉薬の段階）。-1〜1
+  const sensor = { ok: false, beta: 0, gamma: 0, base: null };
+  const mic = { ok: false, level: 0, an: null, stream: null, time: null, freq: null };
+  let pouring = null;                                       // 釉薬をかけている指 { id, x, y }
+  let blowPress = false;                                    // 窯：長押しで風を送っている
+  let turn = { vel: 0.3, drag: false };                     // できあがり：器の回転
+  let angle = 0, spinSpeed = 5.2;
+
+  const finger = $('finger');
+  const touches = new Map();
+  let mode = null, viewStart = null, pinch = null, hintCount = 0;
+  function measure() {
+    const a = [...touches.values()];
+    return { dist: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, cy: (a[0].y + a[1].y) / 2 };
+  }
+  function showFinger(x, y) { finger.style.left = x + 'px'; finger.style.top = y + 'px'; finger.classList.add('on'); canvas.classList.add('touching'); }
+  function endTouchAction() {
+    contact = null; pouring = null; blowPress = false; turn.drag = false;
+    lean.dragX = 0; lean.dragZ = 0;
+    canvas.classList.remove('touching'); finger.classList.remove('on');
+  }
+  function countHint(n) { if (++hintCount >= n) $('hint').classList.add('gone'); }
+
+  canvas.addEventListener('pointerdown', ev => {
+    if (stage === 'intro' || stage === 'cool') return;
+    touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+    ensureAudio();
+    view.to = null;
+    if (touches.size === 2) {                               // 2本指 → 拡大・縮小と角度
+      endTouchAction(); mode = 'pinch';
+      pinch = measure(); pinch.zoom = view.zoom; pinch.pitch = view.pitch;
+      return;
+    }
+    if (touches.size !== 1) return;
+    const h = hitPot(ev.clientX, ev.clientY);
+    if (stage === 'shape') {
+      if (h) { mode = 'shape'; contact = { id: ev.pointerId, kind: h.kind, y: h.y, hold: 0, boost: 0, x: ev.clientX, yPx: ev.clientY }; showFinger(ev.clientX, ev.clientY); }
+      else { mode = 'view'; viewStart = { y: ev.clientY, pitch: view.pitch }; }
+    } else if (stage === 'glaze') {
+      if (h) { mode = 'pour'; pouring = { id: ev.pointerId, x: ev.clientX, y: ev.clientY }; showFinger(ev.clientX, ev.clientY); }
+      else { mode = 'lean'; viewStart = { x: ev.clientX, y: ev.clientY }; }
+    } else if (stage === 'kiln') {
+      mode = 'blow'; blowPress = true; showFinger(ev.clientX, ev.clientY);
+    } else if (stage === 'done') {
+      mode = 'turn'; turn.drag = true; turn.vel = 0; viewStart = { x: ev.clientX, y: ev.clientY, pitch: view.pitch };
+    }
+  });
+  canvas.addEventListener('pointermove', ev => {
+    if (!touches.has(ev.pointerId)) return;
+    const tp = touches.get(ev.pointerId), px = tp.x, py = tp.y; tp.x = ev.clientX; tp.y = ev.clientY;
+    if (mode === 'pinch' && touches.size >= 2) {
+      const m = measure();
+      view.zoom = clamp(pinch.zoom * m.dist / pinch.dist, ZOOM_MIN, ZOOM_MAX);
+      view.pitch = clamp(pinch.pitch + (m.cy - pinch.cy) * 0.25, PITCH_MIN, PITCH_MAX);
+      placeCamera();
+    } else if (mode === 'view') {
+      view.pitch = clamp(viewStart.pitch + (ev.clientY - viewStart.y) * 0.25, PITCH_MIN, PITCH_MAX);
+      placeCamera();
+    } else if (mode === 'shape' && contact && ev.pointerId === contact.id) {
+      const c = contact, wpp = worldPerPx();
+      const dyW = clamp(-(ev.clientY - c.yPx) * wpp, -0.2, 0.2);
+      clay.Ht = clamp(clay.Ht + dyW * 0.6 * (0.3 + 0.7 * c.y / clay.H), H_MIN, H_MAX);     // 上下：のびる・ちぢむ
+      const ax = axisScreenX(c.y);
+      const toward = (Math.abs(c.x - ax) - Math.abs(ev.clientX - ax)) * wpp;
+      const push = c.kind === 'out' ? toward : c.kind === 'in' ? -toward : 0;
+      if (push > 0) c.boost += Math.min(push, 0.08) * 0.8;                               // 押す向きに進めた分だけ強く効く
+      const h = hitPot(ev.clientX, ev.clientY);
+      c.y = h ? h.y : clamp(c.y + dyW, 0, clay.H);
+      c.x = ev.clientX; c.yPx = ev.clientY;
+      friction = Math.min(1, friction + Math.hypot(dyW, toward) * 6);
+      showFinger(ev.clientX, ev.clientY);
+    } else if (mode === 'pour' && pouring) {
+      pouring.x = ev.clientX; pouring.y = ev.clientY; showFinger(ev.clientX, ev.clientY);
+    } else if (mode === 'lean') {
+      lean.dragX = clamp((ev.clientX - viewStart.x) / 110, -1, 1);
+      lean.dragZ = clamp((ev.clientY - viewStart.y) / 110, -1, 1);
+    } else if (mode === 'blow') {
+      showFinger(ev.clientX, ev.clientY);
+    } else if (mode === 'turn') {
+      const dx = ev.clientX - px;
+      angle += dx * 0.011; turn.vel = dx * 0.011 * 60 * 0.5 + turn.vel * 0.5;
+      view.pitch = clamp(viewStart.pitch + (ev.clientY - viewStart.y) * 0.22, PITCH_MIN, PITCH_MAX);
+      placeCamera();
+    }
+  });
+  function release(ev) {
+    if (!touches.delete(ev.pointerId)) return;
+    if (mode === 'shape' || mode === 'pour' || mode === 'lean' || mode === 'turn') countHint(stage === 'shape' ? 5 : 3);
+    if (mode === 'turn') turn.vel = clamp(turn.vel, -4, 4);
+    if (mode !== 'pinch') endTouchAction();
+    if (touches.size === 0) mode = null;
+    else if (mode === 'pinch' && touches.size < 2) mode = 'wait';      // 残った1本では何もしない
+  }
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+  canvas.addEventListener('wheel', ev => {
+    ev.preventDefault(); view.to = null;
+    view.zoom = clamp(view.zoom * Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0015)), ZOOM_MIN, ZOOM_MAX);
+    placeCamera();
+  }, { passive: false });
+  canvas.addEventListener('contextmenu', ev => ev.preventDefault());      // 長押しでメニューが出ないように
+  const COARSE = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+
+  /* ---- 傾きセンサーとマイク（どちらも、使えなければドラッグ・長押しで代わりになる） ---- */
+  async function initTilt() {
+    if (sensor.ok || !('DeviceOrientationEvent' in window)) return;
+    try {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {       // iPhone はここで許可の確認が出る
+        if ((await DeviceOrientationEvent.requestPermission()) !== 'granted') return;
+      }
+      window.addEventListener('deviceorientation', e => {
+        if (e.beta === null || e.gamma === null) return;
+        sensor.ok = true; sensor.beta = e.beta; sensor.gamma = e.gamma;
+      });
+    } catch (e) {}
+  }
+  async function initMic() {
+    if (mic.ok || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || !audio) return;
+    try {
+      // 雑音を消す機能は切る（息まで消されるため）。自分の出す音を拾わないよう、反響の打ち消しは入れる
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false } });
+      const src = audio.ctx.createMediaStreamSource(stream), an = audio.ctx.createAnalyser();
+      an.fftSize = 1024; an.smoothingTimeConstant = 0.4; src.connect(an);
+      mic.stream = stream; mic.an = an; mic.time = new Uint8Array(an.fftSize); mic.freq = new Uint8Array(an.frequencyBinCount);
+      mic.hz = audio.ctx.sampleRate / an.fftSize; mic.ok = true;
+    } catch (e) {}
+  }
+  function stopMic() {
+    if (mic.stream) mic.stream.getTracks().forEach(t => t.stop());
+    mic.ok = false; mic.stream = null; mic.an = null; mic.level = 0;
+  }
+  function readMic() {
+    if (!mic.ok) return 0;
+    mic.an.getByteTimeDomainData(mic.time); mic.an.getByteFrequencyData(mic.freq);
+    let sum = 0; for (let i = 0; i < mic.time.length; i++) { const v = (mic.time[i] - 128) / 128; sum += v * v; }
+    const rms = Math.sqrt(sum / mic.time.length);
+    let low = 0, all = 0;
+    for (let i = 1; i < mic.freq.length; i++) { const hz = i * mic.hz; if (hz > 4000) break; all += mic.freq[i]; if (hz < 350) low += mic.freq[i]; }
+    const lowRatio = all ? low / all : 0;
+    // 息は「大きいのに低い雑音が多い」。声でも弱く反応する
+    return clamp((rms - 0.035) * 6, 0, 1) * (0.55 + 0.45 * clamp((lowRatio - 0.15) / 0.3, 0, 1));
+  }
+
+  /* =====================================================================
+     音 ―― すべてその場で合成
+     ===================================================================== */
+  let audio = null, soundOn = true;
+  function ensureAudio() {
+    if (audio) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    try {
+      const ctx = new AC();
+      const master = ctx.createGain(); master.gain.value = soundOn ? 0.9 : 0; master.connect(ctx.destination);
+      const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.2 + w * 0.08; }
+      const loop = (type, freq, q) => {
+        const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true;
+        const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
+        const g = ctx.createGain(); g.gain.value = 0; s.connect(f); f.connect(g); g.connect(master); s.start(Math.random());
+        return { f, g };
+      };
+      const hum = ctx.createOscillator(); hum.type = 'sine'; hum.frequency.value = 52;
+      const humG = ctx.createGain(); humG.gain.value = 0; hum.connect(humG); humG.connect(master); hum.start();
+      audio = { ctx, master, buf, humG, whir: loop('lowpass', 220), rub: loop('bandpass', 720, 0.7), pour: loop('bandpass', 2400, 0.5), roar: loop('lowpass', 380), hiss: loop('bandpass', 1500, 0.4) };
+    } catch (e) { audio = null; }
+  }
+  function setGain(node, v, t) { if (audio) node.gain.setTargetAtTime(v, audio.ctx.currentTime, t || 0.08); }
+  function crackle() {
+    if (!audio || !soundOn) return;
+    const ctx = audio.ctx, s = ctx.createBufferSource(); s.buffer = audio.buf;
+    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1800 + Math.random() * 2500;
+    const g = ctx.createGain(), t = ctx.currentTime; g.gain.setValueAtTime(0.25 + Math.random() * 0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    s.connect(f); f.connect(g); g.connect(audio.master); s.start(t, Math.random() * 1.5, 0.06);
+  }
+  function ping() {                                         // 焼きあがった器を指ではじいた音
+    if (!audio || !soundOn) return;
+    const ctx = audio.ctx, t = ctx.currentTime;
+    [[1568, 0.16, 1.6], [3140, 0.07, 0.9], [4710, 0.03, 0.5]].forEach(([f, v, len]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(g); g.connect(audio.master); o.start(t); o.stop(t + len + 0.05);
+    });
+  }
+  $('btnSound').addEventListener('click', () => {
+    soundOn = !soundOn;
+    $('btnSound').textContent = soundOn ? '音　入' : '音　切';
+    ensureAudio();
+    if (audio) audio.master.gain.setTargetAtTime(soundOn ? 0.9 : 0, audio.ctx.currentTime, 0.05);
+  });
+
+  /* =====================================================================
+     段階の切り替え
+     ===================================================================== */
+  const STEP = { shape: '一　形をつくる', glaze: '二　釉薬をかける', kiln: '三　焼く', cool: '三　焼く', done: '四　できあがり' };
+  function setHint(html) { const h = $('hint'); h.innerHTML = html; h.classList.remove('gone'); hintCount = 0; }
+  function goView(pitch, zoom) { view.to = { pitch, zoom }; }
+
+  function startShape(fresh) {
+    stage = 'shape'; setStageClass('shape'); document.body.classList.remove('dark', 'kilnbg');
+    $('step').textContent = STEP.shape;
+    if (fresh) { resetClay(); strokes = 0; }
+    clearGlaze(); stopMic();
+    Object.assign(fired, { m: 0, peak: 20, soak: 0, blow: 0, over: 0, flashes: [] });
+    kiln.T = 20; kiln.heat = 0;
+    potMat.map = clayTex; potMat.roughnessMap = null; potMat.roughness = 0.6; potMat.bumpScale = 0.006; potMat.envMapIntensity = 0.6;
+    potMat.emissive.setRGB(0, 0, 0); potMat.needsUpdate = true;
+    wheel.visible = pedestal.visible = true; slab.visible = false; ground.position.y = -0.6;
+    lean.x = lean.z = 0; spinSpeed = 5.2;
+    rebuild();
+    setHint('<span>外から押さえると、すぼまる</span><span>内側から押さえると、広がる</span><br><span>押さえたまま上へなぞると、のびる</span><br>' +
+            '<span class="view">余白を上下になぞると、のぞき込める</span><span class="view">' + (COARSE ? '2本指でつまむと、拡大・縮小' : 'ホイールで拡大・縮小') + '</span>');
+    $('btnNext').textContent = '釉薬をかける'; $('btnNext').classList.remove('hide', 'fadeout'); $('btnAgain').classList.add('hide');
+    goView(24, 1);
+  }
+
+  let busy = false;                                         // 切り替えの途中で二度押しされても重ならないように
+  async function startGlaze() {
+    if (stage !== 'shape' || busy) return;
+    busy = true;
+    try { await initTilt(); } finally { busy = false; }      // ボタンを押した流れの中で許可を求める
+    stage = 'glaze'; setStageClass('glaze'); $('step').textContent = STEP.glaze;
+    endTouchAction();
+    // いまの形で固める
+    clay.Ht = clay.H; clay.rt.set(clay.r); clay.off = Math.min(clay.off, 0.35); rebuild();
+    prepareGlazeSurface(); clearGlaze();
+    fired.m = 0; composite();
+    potMat.map = compTex; potMat.roughness = 0.93; potMat.bumpScale = 0.004; potMat.envMapIntensity = 0.4; potMat.needsUpdate = true;
+    spinSpeed = 0.5; sensor.base = null;
+    setHint('<span>器にふれているあいだ、釉薬がかかる</span><br><span>' +
+            (sensor.ok || COARSE ? 'スマホを傾けると、釉薬が流れる' : '余白をなぞると器が傾いて、釉薬が流れる') + '</span>' +
+            (COARSE ? '<br><span class="view">余白をなぞっても、傾けられる</span>' : ''));
+    $('btnNext').textContent = '窯に入れる';
+    goView(20, 1);
+  }
+
+  const kiln = { T: 20, heat: 0, blow: 0, t: 0 };
+  function veil(fn) {
+    const v = $('veil'); v.classList.add('on');
+    setTimeout(() => { fn(); requestAnimationFrame(() => setTimeout(() => v.classList.remove('on'), 80)); }, 580);
+  }
+  async function startKiln() {
+    if (stage !== 'glaze' || busy) return;
+    busy = true;
+    ensureAudio();
+    try { await initMic(); } catch (e) {}
+    endTouchAction();
+    veil(() => {
+      stage = 'kiln'; busy = false;
+      setStageClass('kiln'); document.body.classList.add('dark', 'kilnbg'); $('step').textContent = STEP.kiln;
+      wheel.visible = pedestal.visible = false; slab.visible = true; ground.position.y = -0.085;
+      let maxR = 0; for (let i = 0; i < N; i++) maxR = Math.max(maxR, clay.r[i]);
+      const sc = clamp(maxR * 1.45, 0.75, 1.75) / 1.75; slab.scale.set(sc, 1, sc);            // 台は器に合わせた大きさに
+      lean.x = lean.z = 0; spinSpeed = 0.25;
+      Object.assign(kiln, { T: 20, heat: 0, blow: 0, t: 0 });
+      Object.assign(fired, { m: 0, peak: 20, soak: 0, blow: 0, over: 0, flashes: [] });
+      const rnd = seeded(Math.floor(Math.random() * 1e6) + 3);
+      for (let i = 0; i < 9; i++) fired.flashes.push({ x: rnd() * CW, y: rnd() * CH, w: 40 + rnd() * 110, h: 50 + rnd() * 150, a: 0, c: rnd() > 0.4 ? '176,84,40' : '96,60,44', k: 0.4 + rnd() * 0.6 });
+      for (let k = 0; k < GN; k++) gWet[k] = 0;
+      potMat.roughnessMap = roughTex; potMat.roughness = 1; potMat.envMapIntensity = 0.3; potMat.needsUpdate = true;
+      composite();
+      setHint('<span>' + (mic.ok ? '息を吹きかけると、火が強まる' : '画面を長押しすると、風が送られて火が強まる') + '</span>' +
+              (mic.ok ? '<br><span class="view">画面の長押しでも、風を送れる</span>' : '') + '<br><span>いい色になったら、窯から出す</span>');
+      $('btnNext').textContent = '窯から出す'; $('btnNext').classList.add('fadeout');
+      view.pitch = 14; view.zoom = 1; view.to = null; placeCamera();
+    });
+  }
+
+  let coolT = 0;
+  function startCool() {
+    if (stage !== 'kiln') return;
+    stage = 'cool'; coolT = 0; endTouchAction(); stopMic();
+    $('btnNext').classList.add('fadeout'); $('hint').classList.add('gone');
+    fired.over = smoothstep(1300, 1420, fired.peak);
+    for (const f of fired.flashes) f.a = clamp(f.k * (0.25 + fired.blow * 0.05) * smoothstep(1000, 1250, fired.peak), 0, 0.75);
+    composite();
+    setTimeout(() => { document.body.classList.remove('kilnbg'); }, 500);
+    setTimeout(() => { document.body.classList.remove('dark'); }, 1500);
+  }
+
+  function shapeName() {
+    let maxR = 0; for (let i = 0; i < N; i++) maxR = Math.max(maxR, clay.r[i]);
+    const D = maxR * 2, ratio = clay.H / D, neck = clay.r[N - 1] / maxR;
+    if (ratio < 0.3) return '皿';
+    if (ratio < 0.55) return D < 1.0 ? '小鉢' : '鉢';
+    if (neck < 0.62) return ratio > 1.25 ? (D < 1.0 ? '一輪挿' : '徳利') : '壺';
+    if (ratio < 0.85) return D < 0.95 ? 'ぐい呑' : '茶碗';
+    if (ratio < 1.35) return '湯呑';
+    return '花入';
+  }
+  function glazeName() {
+    const ids = Object.keys(used).filter(id => used[id] > 0.25).sort((a, b) => used[b] - used[a]);
+    if (!ids.length) return '焼締';                          // 釉薬をかけずに焼いたもの
+    const lab = id => GLAZES.find(g => g.id === id);
+    if (ids.length === 1) return lab(ids[0]).label;
+    return lab(ids[0]).name + '・' + lab(ids[1]).name + ' 掛分';
+  }
+  const fireWord = t => t < 1100 ? '生焼け' : t < 1180 ? '甘め' : t <= 1300 ? '本焼き' : '強火';
+  const today = () => { const d = new Date(); return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0'); };
+  let caption = { name: '', spec1: '', spec2: '' };
+  function startDone() {
+    stage = 'done'; setStageClass('done'); $('step').textContent = STEP.done;
+    caption = { name: glazeName() + '　' + shapeName(),
+                spec1: '高さ ' + (clay.H * 10).toFixed(1) + 'cm　口径 ' + ((clay.r[N - 1]) * 20).toFixed(1) + 'cm',
+                spec2: '焼成 ' + Math.round(fired.peak / 10) * 10 + '℃　' + fireWord(fired.peak) + '　' + today() };
+    $('capName').textContent = caption.name;
+    $('capSpec').innerHTML = caption.spec1 + '<br>' + caption.spec2;
+    potMat.envMapIntensity = 1.25;
+    spinSpeed = 0; turn.vel = 0.3;
+    setHint('<span>なぞると、まわる</span>');
+    $('btnNext').textContent = '画像を保存'; $('btnNext').classList.remove('fadeout'); $('btnAgain').classList.remove('hide');
+    goView(18, 1.05);
+    ping();
+  }
+
+  $('btnStart').addEventListener('click', () => {
+    ensureAudio();
+    const i = $('intro'); i.style.opacity = 0; i.style.pointerEvents = 'none'; setTimeout(() => i.remove(), 1000);
+    startShape(false);
+  });
+  $('btnNext').addEventListener('click', () => {
+    if (stage === 'shape') startGlaze();
+    else if (stage === 'glaze') startKiln();
+    else if (stage === 'kiln') startCool();
+    else if (stage === 'done') saveImage();
+  });
+  $('btnAgain').addEventListener('click', () => startShape(true));
+  $('btnReset').addEventListener('click', () => { if (stage !== 'intro' && stage !== 'cool') startShape(true); });
+
+  // 釉薬の色見本
+  GLAZES.forEach((g, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sw' + (i === glazeSel ? ' on' : '');
+    const c = g.rgb.map(v => Math.round(v * 255));
+    b.innerHTML = '<i style="background:rgb(' + c.join(',') + ')"></i>' + g.name;
+    b.addEventListener('click', () => { glazeSel = i; [...$('swatches').children].forEach((el, k) => el.classList.toggle('on', k === i)); });
+    $('swatches').appendChild(b);
+  });
+
+  /* =====================================================================
+     画像を保存 ―― 作品札つきの一枚に仕立てる
+     ===================================================================== */
+  function saveImage() {
+    const W = 1080, H = 1350;
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+    placeCamera(W / H, true); renderer.render(scene, camera);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const bg = g.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, H * 0.95);
+    bg.addColorStop(0, '#fbf8f2'); bg.addColorStop(0.45, '#f4eee5'); bg.addColorStop(1, '#e0d5c6');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.drawImage(renderer.domElement, 0, 0, W, H);
+    const mincho = '"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif';
+    const spaced = (text, x, y, sp) => { for (const ch of text) { g.fillText(ch, x, y); x += g.measureText(ch).width + sp; } };
+    g.fillStyle = '#2e2823'; g.textBaseline = 'alphabetic';
+    g.font = '700 34px ' + mincho; spaced('ろくろ', 64, 96, 8);
+    g.font = '700 46px ' + mincho; spaced(caption.name, 64, H - 190, 8);
+    g.globalAlpha = 0.5; g.fillRect(64, H - 160, 44, 1.5); g.globalAlpha = 1;
+    g.fillStyle = '#85786c'; g.font = '500 24px ' + mincho;
+    spaced(caption.spec1, 64, H - 110, 3); spaced(caption.spec2, 64, H - 70, 3);
+    renderer.setPixelRatio(PIXEL_RATIO); placeCamera();
+
+    const url = c.toDataURL('image/png');
+    const bin = atob(url.split(',')[1]), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const d = new Date(), name = 'rokuro-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.png';
+    window.__lastImage = url;
+    try {
+      const file = new File([arr], name, { type: 'image/png' });
+      if (COARSE && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'ろくろ' }).catch(() => {}); return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([arr], { type: 'image/png' })); a.download = name;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      toast('画像を保存しました', 1600);
+    } catch (e) { toast('この画面では保存できませんでした', 2200); }
+  }
+
+  /* =====================================================================
+     炎（窯の奥でゆれる光）
+     ===================================================================== */
+  const fireCanvas = $('fire'), fx = fireCanvas.getContext('2d'), sparks = [];
+  function drawFire(dt, heat, blow) {
+    const W = fireCanvas.width, H = fireCanvas.height;
+    const want = (14 + 90 * heat + 90 * blow) * dt;
+    for (let n = want + Math.random(); n >= 1; n--) {
+      if (sparks.length > 220) break;
+      sparks.push({ x: W * (0.5 + (Math.random() - 0.5) * (1.0 - 0.2 * heat)), y: H * (0.72 + Math.random() * 0.34), vx: (Math.random() - 0.5) * 14,
+                    vy: -(26 + Math.random() * 70) * (0.5 + heat + blow * 0.8), age: 0, life: 0.8 + Math.random() * 1.1, s: (9 + Math.random() * 16) * (0.6 + 0.7 * heat) });
+    }
+    fx.globalCompositeOperation = 'source-over'; fx.clearRect(0, 0, W, H);
+    fx.globalCompositeOperation = 'lighter';
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const p = sparks[i]; p.age += dt; if (p.age > p.life) { sparks.splice(i, 1); continue; }
+      p.x += (p.vx + Math.sin(p.age * 7 + i) * 8) * dt; p.y += p.vy * dt;
+      const t = p.age / p.life, a = Math.sin(Math.PI * Math.min(1, t * 1.15)) * 0.16;
+      const col = t < 0.25 ? '255,190,96' : t < 0.6 ? '255,112,28' : '170,34,10';
+      const grd = fx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.s);
+      grd.addColorStop(0, 'rgba(' + col + ',' + a + ')'); grd.addColorStop(1, 'rgba(' + col + ',0)');
+      fx.fillStyle = grd; fx.fillRect(p.x - p.s, p.y - p.s, p.s * 2, p.s * 2);
+    }
+  }
+  function heatColor(T, out) {                              // 温度で器が赤く光る
+    const k = clamp((T - 520) / 900, 0, 1);
+    out.setRGB(lerp(0.0, 1.0, smoothstep(0, 0.4, k)), lerp(0.0, 0.42, smoothstep(0.25, 1, k)), lerp(0.0, 0.12, smoothstep(0.7, 1, k)));
+    return k;
+  }
+
+  /* =====================================================================
+     画面合わせと、毎フレームの更新
+     ===================================================================== */
+  let viewH = 1.9;
+  function placeCamera(aspect, card) {
+    const w = window.innerWidth, h = window.innerHeight;
+    if (!aspect) { renderer.setSize(w, h, false); aspect = w / h; }
+    camera.aspect = aspect;
+    const halfV = viewH * 0.62 + 0.35, halfW = aspect < 1 ? 1.55 : 2.0;
+    const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const d = camDist = Math.max(halfV / tan, halfW / (tan * aspect)) / (card ? 0.95 : view.zoom);
+    const cy = viewH * (card ? 0.2 : 0.3), pitch = THREE.MathUtils.degToRad(view.pitch);
+    camera.position.set(0, cy + Math.sin(pitch) * d, Math.cos(pitch) * d);
+    camera.lookAt(0, cy, 0);
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', () => placeCamera());
+  placeCamera();
+
+  let prev = performance.now(), lightMix = 0, compClock = 0;
+  const glowEl = $('glow'), tmpCol = new THREE.Color();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+    let camMoved = false;
+
+    /* ---- 形をつくる ---- */
+    if (stage === 'shape' || stage === 'intro') {
+      if (contact) { press(dt); wet = 1; }
+      let moved = false;
+      const kH = Math.min(1, dt * 7), kR = Math.min(1, dt * 9);
+      if (Math.abs(clay.Ht - clay.H) > 0.0005) { clay.H += (clay.Ht - clay.H) * kH; moved = true; }
+      for (let i = 0; i < N; i++) { const d = clay.rt[i] - clay.r[i]; if (Math.abs(d) > 0.0004) { clay.r[i] += d * kR; moved = true; } }
+      if (moved || contact) rebuild();
+      slumpCool = Math.max(0, slumpCool - dt);
+      const tRaw = clay.V / surfaceArea(clay.H, clay.r);
+      if (slumpCool === 0 && (tRaw < T_SLUMP || (clay.off > 0.85 && tRaw < 0.085))) slump();
+      const thin = 1 - clamp((tRaw - T_SLUMP) / 0.1, 0, 1);
+      const wob = 0.002 + 0.02 * thin * clamp(clay.H / 2, 0, 1) + 0.075 * clay.off;      // 芯のぶれ
+      pot.position.x = wob; pot.rotation.z = -wob * 1.1;
+      wet = Math.max(0, wet - dt * 0.5);
+      potMat.roughness = 0.62 - 0.26 * wet; potMat.envMapIntensity = 0.55 + 0.6 * wet;   // ふれている間は濡れてつやが出る
+    } else {
+      pot.position.x += (0 - pot.position.x) * Math.min(1, dt * 3);                      // 手を離したら芯は落ち着く（かたむきは少し残る）
+      pot.rotation.z += (-0.02 * clay.off - pot.rotation.z) * Math.min(1, dt * 3);
+    }
+
+    /* ---- 釉薬 ---- */
+    if (stage === 'glaze') {
+      let sx = 0, sz = 0;
+      if (sensor.ok) {
+        if (!sensor.base) sensor.base = { b: sensor.beta, g: sensor.gamma };
+        sx = clamp((sensor.gamma - sensor.base.g) / 30, -1, 1); sz = clamp((sensor.beta - sensor.base.b) / 30, -1, 1);
+        if (Math.abs(sx) + Math.abs(sz) > 0.5 && hintCount < 3) countHint(3);
+      }
+      const tx = clamp(sx + lean.dragX, -1, 1), tz = clamp(sz + lean.dragZ, -1, 1), k = Math.min(1, dt * 8);
+      lean.x += (tx - lean.x) * k; lean.z += (tz - lean.z) * k;
+      if (pouring) {
+        const h = hitPot(pouring.x, pouring.y);
+        if (h) {
+          const uf = h.u * GW;
+          if (h.kind === 'out') pourAt(uf, (1 - (h.j - 1) / (N - 1)) * (GH - 1), dt); else pourInside(uf, dt);
+        }
+      }
+      if (glazeWet) {
+        const c = Math.cos(angle), s = Math.sin(angle);           // 傾きを、回っている器から見た向きに直す
+        stepGlaze(dt, lean.x * c - lean.z * s, lean.x * s + lean.z * c, 1);
+      }
+      if (glazeDirty) composite();
+    }
+    tilt.rotation.z += (-lean.x * 0.3 - tilt.rotation.z) * Math.min(1, dt * 10);
+    tilt.rotation.x += (lean.z * 0.3 - tilt.rotation.x) * Math.min(1, dt * 10);
+
+    /* ---- 焼く・冷ます ---- */
+    const inKiln = stage === 'kiln', cooling = stage === 'cool';
+    if (inKiln) {
+      kiln.t += dt;
+      const b = Math.max(blowPress ? 0.85 : 0, readMic());
+      kiln.blow += (b - kiln.blow) * Math.min(1, dt * (b > kiln.blow ? 6 : 2.5));
+      if (kiln.blow > 0.3 && hintCount < 3 && kiln.t > 1) { hintCount += dt * 0.8; if (hintCount >= 3) $('hint').classList.add('gone'); }
+      const target = 780 + 660 * kiln.blow;
+      kiln.T += (target - kiln.T) * dt * (target > kiln.T ? 0.32 : 0.11);
+      fired.peak = Math.max(fired.peak, kiln.T); fired.blow += kiln.blow * dt;
+      if (kiln.T > 1100) fired.soak += dt;
+      const m = clamp(fired.soak / 5, 0, 1) * smoothstep(1050, 1200, fired.peak);
+      if (kiln.T > 1220) {                                           // 熱で釉薬がふたたび動く
+        const mob = clamp((kiln.T - 1220) / 180, 0, 1) * 0.5;
+        for (let k = 0; k < GN; k += 1) if (gA[k] > 0.2 && gWet[k] < mob) gWet[k] = mob;
+        stepGlaze(dt, 0, 0, mob);
+      }
+      compClock += dt;
+      if (Math.abs(m - fired.m) > 0.03 || (glazeDirty && compClock > 0.25)) { fired.m = m; composite(); compClock = 0; }
+      $('tempNum').textContent = Math.round(kiln.T / 5) * 5;
+      $('tempWord').textContent = kiln.T < 600 ? 'あぶり'
+        : kiln.T > 1300 ? '強い火。釉薬が流れだす'
+        : m >= 0.95 ? 'よく溶けた。出しどき'
+        : kiln.T >= 1100 ? '釉薬が溶けていく'
+        : fired.soak > 0 ? '火が弱まっている' : (mic.ok ? '息を吹いて、温度を上げる' : '長押しで風を送って、温度を上げる');
+      if (kiln.T > 600) $('btnNext').classList.remove('fadeout');
+      if (Math.random() < dt * (2 + 10 * kiln.heat + 14 * kiln.blow)) crackle();
+    }
+    if (cooling) {
+      coolT += dt;
+      kiln.blow = 0; kiln.T += (20 - kiln.T) * dt * 1.5;
+      $('tempNum').textContent = Math.round(kiln.T / 5) * 5; $('tempWord').textContent = '冷ます';
+      if (coolT > 3.4) startDone();
+    }
+    kiln.heat = (inKiln || cooling) ? clamp((kiln.T - 250) / 1000, 0, 1) : 0;
+    const flick = 0.82 + 0.18 * Math.sin(now * 0.013) * Math.sin(now * 0.0071 + 1.3) + (Math.random() - 0.5) * 0.06;
+    lightMix += ((inKiln ? 1 : 0) - lightMix) * Math.min(1, dt * (inKiln ? 4 : 1.1));
+    hemi.intensity = lerp(0.82, 0.07, lightMix); key.intensity = lerp(0.95, 0.06, lightMix); fill.intensity = lerp(0.28, 0, lightMix);
+    fireBack.intensity = kiln.heat * flick * 1.5 * lightMix; fireFront.intensity = (0.3 + 0.7 * kiln.heat) * flick * 0.34 * lightMix;
+    if (inKiln || cooling) {
+      const k = heatColor(kiln.T, tmpCol);
+      potMat.emissive.copy(tmpCol); potMat.emissiveIntensity = 0.42 * k;
+      potMat.envMapIntensity = lerp(1.25, 0.15, lightMix);
+      slab.material.emissive.copy(tmpCol); slab.material.emissiveIntensity = 0.08 * k;
+      drawFire(dt, kiln.heat * lightMix, kiln.blow);
+      fireCanvas.style.opacity = (0.3 + 0.6 * kiln.heat) * lightMix;
+      glowEl.style.opacity = clamp((0.12 + 0.4 * kiln.heat + 0.15 * kiln.blow) * flick * lightMix, 0, 1);
+    } else if (fireCanvas.style.opacity !== '0') {
+      fireCanvas.style.opacity = '0'; glowEl.style.opacity = '0';
+      potMat.emissiveIntensity = 0; slab.material.emissiveIntensity = 0;
+    }
+
+    /* ---- 回転 ---- */
+    if (stage === 'done') {
+      if (!turn.drag) { turn.vel += (0.3 - turn.vel) * Math.min(1, dt * 0.8); angle += turn.vel * dt; }
+    } else angle += dt * spinSpeed;
+    spin.rotation.y = angle;
+
+    /* ---- カメラ ---- */
+    const target = Math.max(1.9, clay.H + 0.75);
+    if (Math.abs(target - viewH) > 0.002) { viewH += (target - viewH) * Math.min(1, dt * 2.2); camMoved = true; }
+    if (view.to) {
+      const k = Math.min(1, dt * 2.4);
+      view.pitch += (view.to.pitch - view.pitch) * k; view.zoom += (view.to.zoom - view.zoom) * k; camMoved = true;
+      if (Math.abs(view.to.pitch - view.pitch) < 0.05 && Math.abs(view.to.zoom - view.zoom) < 0.002) view.to = null;
+    }
+    if (camMoved) placeCamera();
+
+    /* ---- 音 ---- */
+    if (audio) {
+      const shaping = stage === 'shape' || stage === 'intro';
+      friction = Math.max(contact ? 0.38 : 0, friction - dt * 4.5);
+      setGain(audio.humG, shaping ? 0.05 : 0, 0.4); setGain(audio.whir.g, shaping ? 0.16 : stage === 'glaze' ? 0.03 : 0, 0.4);
+      setGain(audio.rub.g, shaping ? friction * 0.5 : 0, 0.04);
+      audio.rub.f.frequency.setTargetAtTime(560 + friction * 520, audio.ctx.currentTime, 0.06);
+      setGain(audio.pour.g, pouring ? 0.14 : glazeWet && stage === 'glaze' ? 0.025 : 0, 0.12);
+      setGain(audio.roar.g, inKiln ? 0.12 + 0.3 * kiln.heat + 0.28 * kiln.blow : cooling ? 0.1 * kiln.heat : 0, 0.15);
+      audio.roar.f.frequency.setTargetAtTime(280 + 500 * kiln.blow, audio.ctx.currentTime, 0.1);
+      setGain(audio.hiss.g, inKiln ? 0.05 * kiln.heat + 0.22 * kiln.blow : 0, 0.1);
+    }
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // 動作確認用（開発者ツールから状態を読めるようにしておく）
+  window.__rokuro = { clay, view, kiln, fired, lean, sensor, mic, used, inner, get stage() { return stage; },
+    startShape, startGlaze, startKiln, startCool, startDone, saveImage, slump, pourAt, pourInside, composite, stepGlaze,
+    glaze: { gA, gWet, GW, GH, select: i => { glazeSel = i; } }, setBlow: v => { blowPress = v; } };
+})();
+</script>
+</body>
+</html>
