@@ -33,16 +33,21 @@
   .head h1 { margin:0; font-family:var(--mincho); font-weight:700; font-size:24px; letter-spacing:.18em; }
   .head .step { margin-top:6px; font-family:var(--mincho); font-size:13px; letter-spacing:.2em; color:var(--sub); transition:color .8s; }
 
-  .tools { position:fixed; right:16px; top:calc(16px + var(--safe-t)); display:flex; gap:8px; }
+  .tools { position:fixed; right:16px; top:calc(16px + var(--safe-t)); display:flex; gap:8px; z-index:11; align-items:center; }
   .chip { font:500 12px var(--sans); letter-spacing:.08em; color:var(--ink); background:var(--chip);
           border:1px solid var(--line); border-radius:999px; padding:9px 14px; cursor:pointer;
           -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:color .8s, background .8s, border-color .8s; }
   .chip:active { filter:brightness(1.15); }
+  .chip.icon { width:40px; height:40px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
+  .chip.icon .mute { display:none; }
+  .chip.icon.off .waves { display:none; } .chip.icon.off .mute { display:inline; } .chip.icon.off { color:var(--sub); }
+  body.s-intro #btnReset { display:none; }
 
   .temp { position:fixed; left:0; right:0; top:calc(74px + var(--safe-t)); text-align:center; pointer-events:none;
           font-family:var(--mincho); color:var(--ink); opacity:0; transition:opacity .8s; }
   .temp b { font-weight:500; font-size:44px; letter-spacing:.04em; font-variant-numeric:tabular-nums; }
   .temp span { font-size:16px; margin-left:4px; color:var(--sub); }
+  .temp em { font-style:normal; }
   .temp small { display:block; margin-top:2px; font-size:12px; letter-spacing:.3em; color:var(--sub); min-height:1.4em; }
   body.s-kiln .temp { opacity:1; }
 
@@ -89,11 +94,30 @@
   .finger.on { opacity:1; }
   body.dark .finger { border-color:rgba(255,220,180,.4); background:radial-gradient(circle, rgba(255,190,120,.3), rgba(255,160,80,0) 70%); }
 
-  .intro { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  /* 釉薬：そそがれる筋と、ふれる場所のしるし */
+  .stream { position:fixed; width:12px; margin-left:-6px; border-radius:6px 6px 3px 3px; pointer-events:none; opacity:0; transition:opacity .15s;
+            transform-origin:50% 100%; animation:pourw .5s ease-in-out infinite alternate; }
+  .stream.on { opacity:.9; }
+  @keyframes pourw { from { transform:scaleX(.8); } to { transform:scaleX(1.15); } }
+  .target { position:fixed; width:64px; height:64px; margin:-32px 0 0 -32px; border-radius:50%; pointer-events:none; opacity:0; transition:opacity .5s;
+            border:1.5px solid var(--ink); }
+  .target::after { content:""; position:absolute; inset:-1.5px; border-radius:50%; border:1.5px solid var(--ink); animation:ringp 1.6s ease-out infinite; }
+  .target.on { opacity:.75; }
+  @keyframes ringp { from { transform:scale(1); opacity:.8; } to { transform:scale(1.9); opacity:0; } }
+  .phone { display:inline-block; width:15px; height:25px; border:1.5px solid var(--ink); border-radius:4px; vertical-align:-6px; margin-right:.7em;
+           animation:rock 1.8s ease-in-out infinite; }
+  @keyframes rock { 0%,100% { transform:rotate(-24deg); } 50% { transform:rotate(24deg); } }
+  .hint b { font-weight:700; font-size:1.12em; }
+  /* 窯：息の届き具合 */
+  .meter { display:block; width:150px; height:4px; margin:12px auto 0; border-radius:2px; background:var(--line); overflow:hidden; }
+  .meter b { display:block; height:100%; width:0; background:#ffb45a; border-radius:2px; box-shadow:0 0 10px #ff8a2a; }
+  .meterLabel { display:block; margin-top:6px; font-size:11px; letter-spacing:.2em; color:var(--sub); }
+
+  .intro { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
            background:rgba(244,238,229,.78); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); transition:opacity .9s ease; padding:24px; }
   .intro h2 { margin:0; font-family:var(--mincho); font-weight:700; font-size:54px; letter-spacing:.3em; text-indent:.3em; }
   .intro p { margin:26px 0 0; font-family:var(--mincho); font-size:16px; letter-spacing:.2em; line-height:2.1; }
-  .intro p.sub { margin-top:6px; color:var(--sub); font-size:13px; }
+  .intro p span { display:inline-block; }
   .intro .next { margin-top:40px; }
   .intro small { margin-top:22px; font-size:11px; letter-spacing:.1em; color:var(--sub); line-height:1.8; }
 
@@ -120,11 +144,17 @@
 </div>
 
 <div class="tools">
-  <button class="chip" id="btnSound" type="button">音　入</button>
+  <button class="chip icon" id="btnSound" type="button" aria-label="音を切る" aria-pressed="true">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor" stroke-width="1.2"/>
+      <g class="waves"><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></g>
+      <g class="mute"><path d="M16 9.5l5 5"/><path d="M21 9.5l-5 5"/></g>
+    </svg>
+  </button>
   <button class="chip" id="btnReset" type="button">はじめから</button>
 </div>
 
-<div class="temp" id="temp"><b id="tempNum">20</b><span>℃</span><small id="tempWord"></small></div>
+<div class="temp" id="temp"><b id="tempNum">20</b><span>℃</span><small id="tempWord"></small><i class="meter"><b id="blowBar"></b></i><em class="meterLabel" id="blowLabel"></em></div>
 
 <div class="caption" id="caption">
   <div class="name" id="capName"></div>
@@ -143,12 +173,13 @@
 
 <div class="warn" id="warn">へたってしまった</div>
 <div class="finger" id="finger"></div>
+<div class="stream" id="stream"></div>
+<div class="target" id="target"></div>
 <div class="veil" id="veil"></div>
 
 <div class="intro" id="intro">
   <h2>ろくろ</h2>
-  <p>土をかたちにして、釉薬をかけ、火で焼く。</p>
-  <p class="sub">同じ器は、二度とできません。</p>
+  <p><span>土をかたちにして、</span><span>釉薬をかけ、</span><span>火で焼く。</span></p>
   <button class="next" id="btnStart" type="button">はじめる</button>
   <small>スマートフォンでは、本体の傾きと、息を使います。<br>音が出ます。</small>
 </div>
@@ -176,7 +207,7 @@
      粘土の形 ―― 器を「高さごとの半径」の並びで持つ（回転体なのでこれで足りる）。1.0 = 10cm
      ===================================================================== */
   const N = 72;                 // 高さ方向の分割数
-  const T_SLUMP = 0.05;         // 壁がこれより薄くなると、へたる
+  const T_SLUMP = 0.04;         // 壁がこれより薄くなると、へたる
   const H_MIN = 0.3, H_MAX = 2.6, R_MIN = 0.1, R_MAX = 1.45;
   // r / H が「いまの形」、rt / Ht が「指が押して向かわせている形」。いまの形は少し遅れて追いかける（じわっと寄る）
   const clay = { H: 0, Ht: 0, r: new Float32Array(N), rt: new Float32Array(N), ridge: new Float32Array(N), V: 0, t: 0.2, off: 0 };
@@ -391,13 +422,13 @@
   const dA = new Float32Array(GN), dR = new Float32Array(GN), dG = new Float32Array(GN), dB = new Float32Array(GN), dW = new Float32Array(GN);
   const sinT = new Float32Array(GW), cosT = new Float32Array(GW), colNoise = new Float32Array(GW), slope = new Float32Array(GH), ridgeFac = new Float32Array(GH);
   for (let u = 0; u < GW; u++) { sinT[u] = Math.sin(u / GW * Math.PI * 2); cosT[u] = Math.cos(u / GW * Math.PI * 2); }
-  const inner = { a: 0, r: 0, g: 0, b: 0 };                 // 内側は全体にまわる
+  const inner = { a: 0, r: 0, g: 0, b: 0, wet: 0 };                 // 内側は全体にまわる
   const used = {};                                          // 使った釉薬と量
   let glazeWet = false, glazeDirty = true;
 
   function clearGlaze() {
     gA.fill(0); gR.fill(0); gG.fill(0); gB.fill(0); gWet.fill(0);
-    inner.a = 0; for (const k in used) delete used[k];
+    inner.a = 0; inner.wet = 0; for (const k in used) delete used[k];
     glazeWet = false; glazeDirty = true;
   }
   function prepareGlazeSurface() {                          // 形が決まった時点で、流れやすさを面ごとに決める
@@ -430,7 +461,7 @@
     const g = GLAZES[glazeSel], t = Math.min(1, dt * 2.2);
     if (inner.a < 0.02) { inner.r = g.rgb[0]; inner.g = g.rgb[1]; inner.b = g.rgb[2]; }
     else { inner.r = lerp(inner.r, g.rgb[0], t); inner.g = lerp(inner.g, g.rgb[1], t); inner.b = lerp(inner.b, g.rgb[2], t); }
-    inner.a = Math.min(1, inner.a + dt * 1.6);
+    inner.a = Math.min(1, inner.a + dt * 1.6); inner.wet = 1;
     pourAt(uf, 0, dt * 0.5);                                // 口からあふれて外へ
     used[g.id] = (used[g.id] || 0) + dt;
   }
@@ -455,12 +486,14 @@
       }
     }
     const dry = dt * 0.11;
+    let damp = false;
     for (let k = 0; k < GN; k++) {
       gA[k] += dA[k]; gR[k] += dR[k]; gG[k] += dG[k]; gB[k] += dB[k];
       const w = Math.max(gWet[k] - dry, dW[k]); gWet[k] = w > 0 ? w : 0;
+      if (w > 0.02) damp = true;
     }
     if (any) glazeDirty = true;
-    glazeWet = any;
+    glazeWet = any || damp;                                  // 流れが止まっても、乾ききるまでは見た目が変わる
   }
 
   /* ---- 釉薬を器の表面の絵に描き出す ---- */
@@ -491,7 +524,7 @@
     const m = fired.m, over = fired.over;
     // 素地：素焼きの色 → 焼くと締まった土の色へ
     const heatK = smoothstep(900, 1380, fired.peak);
-    const cr = lerp(lerp(214, 204, m), 150, heatK * m), cg = lerp(lerp(180, 166, m), 92, heatK * m), cb = lerp(lerp(152, 130, m), 62, heatK * m);
+    const cr = lerp(lerp(206, 204, m), 150, heatK * m), cg = lerp(lerp(170, 166, m), 92, heatK * m), cb = lerp(lerp(140, 130, m), 62, heatK * m);
     compCtx.globalCompositeOperation = 'source-over'; compCtx.globalAlpha = 1;
     compCtx.drawImage(clayCanvas, 0, 0, CW, CH);
     compCtx.globalAlpha = 0.8; compCtx.fillStyle = 'rgb(' + (cr | 0) + ',' + (cg | 0) + ',' + (cb | 0) + ')'; compCtx.fillRect(0, 0, CW, CH);
@@ -516,24 +549,26 @@
       } else if (j > N) mode = 2;                            // 口の上と内側
       for (let x = 0; x < GW; x++) {
         const o = (y * GW + x) * 4;
-        let A = 0, r = 0, g = 0, b = 0;
+        let A = 0, r = 0, g = 0, b = 0, wv = 0;
         if (mode === 1) {
           const k0 = v0 * GW + x, k1 = v1 * GW + x;
           A = lerp(gA[k0], gA[k1], f0);
           if (A > 0.001) { r = lerp(gR[k0], gR[k1], f0) / A; g = lerp(gG[k0], gG[k1], f0) / A; b = lerp(gB[k0], gB[k1], f0) / A; }
-          A *= thin;
+          A *= thin; wv = Math.min(1, lerp(gWet[k0], gWet[k1], f0));
         } else if (mode === 2) {
           const top = gA[x], ia = inner.a * 1.3;
           if (j < INNER_START && top * 0.75 > ia) { A = top * 0.75; r = gR[x] / top; g = gG[x] / top; b = gB[x] / top; }
           else { A = ia; r = inner.r; g = inner.g; b = inner.b; }
+          wv = Math.max(inner.wet, Math.min(1, gWet[x]));
         }
         if (A <= 0.001) { d[o + 3] = 0; md[o + 3] = 0; continue; }
         const dk = 1 - darken * smoothstep(0.7, 2.6, A);
         const fr = r * dk, fg = g * dk, fb = b * dk;                                   // 焼けた色（厚い所は深く）
-        const rr = lerp(r, 0.93, 0.5), rg = lerp(g, 0.91, 0.5), rb = lerp(b, 0.88, 0.5);   // 生の釉薬は粉っぽく白い
+        const chalk = lerp(0.36, 0.1, wv), sh = 1 - 0.1 * wv;                          // 生の釉薬：濡れている間は濃く、乾くと粉っぽく白む
+        const rr = lerp(r, 0.93, chalk) * sh, rg = lerp(g, 0.91, chalk) * sh, rb = lerp(b, 0.88, chalk) * sh;
         const alpha = lerp(1 - Math.exp(-kRaw * A), 1 - Math.exp(-kFired * A), m);
         d[o] = lerp(rr, fr, m) * 255; d[o + 1] = lerp(rg, fg, m) * 255; d[o + 2] = lerp(rb, fb, m) * 255; d[o + 3] = alpha * 255;
-        const rough = lerp(0.94, 0.1 + 0.25 * (1 - smoothstep(0.3, 1.2, A)), m) * 255;  // 溶けるとつやが出る
+        const rough = lerp(lerp(0.95, 0.22, wv), 0.1 + 0.25 * (1 - smoothstep(0.3, 1.2, A)), m) * 255;  // 濡れている間と、焼けて溶けた後はつやが出る
         md[o] = md[o + 1] = md[o + 2] = rough; md[o + 3] = alpha * 255;
       }
     }
@@ -575,7 +610,7 @@
   }
 
   let contact = null;       // 形づくり中の指 { id, kind, y, hold, boost, x, yPx }
-  let strokes = 0, wet = 0, friction = 0, warnTimer = 0, slumpCool = 0, camDist = 6;
+  let strokes = 0, wet = 0, friction = 0, warnTimer = 0, slumpCool = 0, camDist = 6, thinWarned = false;
   const worldPerPx = () => (2 * camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / window.innerHeight;
 
   function press(dt) {
@@ -584,7 +619,7 @@
     const idx = (c.y / clay.H) * (N - 1);
     if (c.kind !== 'rim') {
       const dir = c.kind === 'out' ? -1 : 1;
-      const amt = 0.24 * smoothstep(0, 0.35, c.hold) * dt + c.boost;       // 押さえ始めはそっと、だんだん効く
+      const amt = 0.24 * smoothstep(0.12, 0.5, c.hold) * dt + c.boost;     // 押さえ始めはそっと、だんだん効く
       const sig = (0.25 / clay.H) * (N - 1);                               // 指のあたる幅（約5cm）
       for (let i = 0; i < N; i++) {
         const d = i - idx, w = Math.exp(-(d * d) / (2 * sig * sig));
@@ -597,7 +632,7 @@
       const k = 1 - Math.exp(-dt * 5);
       const i0 = Math.max(1, Math.floor(idx - sig * 3)), i1 = Math.min(N - 2, Math.ceil(idx + sig * 3));
       for (let i = i0; i <= i1; i++) rt[i] += 0.5 * k * ((rt[i - 1] + rt[i + 1]) / 2 - rt[i]);
-      if (c.boost > 0.012) clay.off = Math.min(1, clay.off + (c.boost - 0.012) * 4);    // 乱暴に押すと芯がぶれる
+      if (c.boost > 0.02) clay.off = Math.min(1, clay.off + (c.boost - 0.02) * 1.2);      // 乱暴に押すと芯がぶれる
       else if (c.hold > 0.5) clay.off = Math.max(0, clay.off - dt * 0.22);              // じっと当てると芯が戻る
     }
     c.boost = 0;
@@ -660,7 +695,7 @@
     if (touches.size !== 1) return;
     const h = hitPot(ev.clientX, ev.clientY);
     if (stage === 'shape') {
-      if (h) { mode = 'shape'; contact = { id: ev.pointerId, kind: h.kind, y: h.y, hold: 0, boost: 0, x: ev.clientX, yPx: ev.clientY }; showFinger(ev.clientX, ev.clientY); }
+      if (h) { mode = 'shape'; contact = { id: ev.pointerId, kind: h.kind, start: h.kind, travel: 0, y: h.y, hold: 0, boost: 0, x: ev.clientX, yPx: ev.clientY }; showFinger(ev.clientX, ev.clientY); }
       else { mode = 'view'; viewStart = { y: ev.clientY, pitch: view.pitch }; }
     } else if (stage === 'glaze') {
       if (h) { mode = 'pour'; pouring = { id: ev.pointerId, x: ev.clientX, y: ev.clientY }; showFinger(ev.clientX, ev.clientY); }
@@ -687,7 +722,14 @@
       const dyW = clamp(-(ev.clientY - c.yPx) * wpp, -0.2, 0.2);
       clay.Ht = clamp(clay.Ht + dyW * 0.6 * (0.3 + 0.7 * c.y / clay.H), H_MIN, H_MAX);     // 上下：のびる・ちぢむ
       const ax = axisScreenX(c.y);
-      const toward = (Math.abs(c.x - ax) - Math.abs(ev.clientX - ax)) * wpp;
+      const towardPx = Math.abs(c.x - ax) - Math.abs(ev.clientX - ax), toward = towardPx * wpp;
+      // 外側にふれたまま外へなぞったら「広げる」に切り替える（内側の手で押し出す動き）。内へ戻せば、また「すぼめる」
+      if (c.start === 'out') {
+        c.travel -= towardPx;
+        if (c.kind === 'out' && c.travel > 12) { c.kind = 'in'; c.travel = 0; c.hold = Math.max(c.hold, 0.3); }
+        else if (c.kind === 'in' && c.travel < -12) { c.kind = 'out'; c.travel = 0; }
+        else if ((c.kind === 'out' && c.travel < 0) || (c.kind === 'in' && c.travel > 0)) c.travel = 0;
+      }
       const push = c.kind === 'out' ? toward : c.kind === 'in' ? -toward : 0;
       if (push > 0) c.boost += Math.min(push, 0.08) * 0.8;                               // 押す向きに進めた分だけ強く効く
       const h = hitPot(ev.clientX, ev.clientY);
@@ -711,7 +753,7 @@
   });
   function release(ev) {
     if (!touches.delete(ev.pointerId)) return;
-    if (mode === 'shape' || mode === 'pour' || mode === 'lean' || mode === 'turn') countHint(stage === 'shape' ? 5 : 3);
+    if (mode === 'shape' || mode === 'turn') countHint(stage === 'shape' ? 5 : 3);
     if (mode === 'turn') turn.vel = clamp(turn.vel, -4, 4);
     if (mode !== 'pinch') endTouchAction();
     if (touches.size === 0) mode = null;
@@ -743,12 +785,12 @@
   async function initMic() {
     if (mic.ok || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || !audio) return;
     try {
-      // 雑音を消す機能は切る（息まで消されるため）。自分の出す音を拾わないよう、反響の打ち消しは入れる
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false } });
+      // 通話用の音声処理（雑音消し・反響消し・音量の自動調整）はすべて切る。入れると息が雑音として弱められる
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       const src = audio.ctx.createMediaStreamSource(stream), an = audio.ctx.createAnalyser();
       an.fftSize = 1024; an.smoothingTimeConstant = 0.4; src.connect(an);
       mic.stream = stream; mic.an = an; mic.time = new Uint8Array(an.fftSize); mic.freq = new Uint8Array(an.frequencyBinCount);
-      mic.hz = audio.ctx.sampleRate / an.fftSize; mic.ok = true;
+      mic.hz = audio.ctx.sampleRate / an.fftSize; mic.floor = 0.02; mic.ok = true;
     } catch (e) {}
   }
   function stopMic() {
@@ -763,8 +805,11 @@
     let low = 0, all = 0;
     for (let i = 1; i < mic.freq.length; i++) { const hz = i * mic.hz; if (hz > 4000) break; all += mic.freq[i]; if (hz < 350) low += mic.freq[i]; }
     const lowRatio = all ? low / all : 0;
-    // 息は「大きいのに低い雑音が多い」。声でも弱く反応する
-    return clamp((rms - 0.035) * 6, 0, 1) * (0.55 + 0.45 * clamp((lowRatio - 0.15) / 0.3, 0, 1));
+    // まわりの静けさ（floor）を測りつづけ、そこからの上がり幅で息を拾う。静かになればすぐ下がり、うるさくなればゆっくり上がる
+    if (rms < mic.floor) mic.floor += (rms - mic.floor) * 0.3; else mic.floor += (rms - mic.floor) * 0.0015;
+    mic.floor = clamp(mic.floor, 0.002, 0.08); mic.rms = rms;
+    // 息は低い雑音が多いので少し強めに。声や物音でも反応する
+    return clamp((rms - mic.floor * 1.6 - 0.004) * 22, 0, 1) * (0.75 + 0.25 * clamp((lowRatio - 0.15) / 0.3, 0, 1));
   }
 
   /* =====================================================================
@@ -810,7 +855,8 @@
   }
   $('btnSound').addEventListener('click', () => {
     soundOn = !soundOn;
-    $('btnSound').textContent = soundOn ? '音　入' : '音　切';
+    const bs = $('btnSound'); bs.classList.toggle('off', !soundOn);
+    bs.setAttribute('aria-pressed', String(soundOn)); bs.setAttribute('aria-label', soundOn ? '音を切る' : '音を出す');
     ensureAudio();
     if (audio) audio.master.gain.setTargetAtTime(soundOn ? 0.9 : 0, audio.ctx.currentTime, 0.05);
   });
@@ -829,12 +875,13 @@
     clearGlaze(); stopMic();
     Object.assign(fired, { m: 0, peak: 20, soak: 0, blow: 0, over: 0, flashes: [] });
     kiln.T = 20; kiln.heat = 0;
+    $('target').classList.remove('on'); $('stream').classList.remove('on');
     potMat.map = clayTex; potMat.roughnessMap = null; potMat.roughness = 0.6; potMat.bumpScale = 0.006; potMat.envMapIntensity = 0.6;
     potMat.emissive.setRGB(0, 0, 0); potMat.needsUpdate = true;
     wheel.visible = pedestal.visible = true; slab.visible = false; ground.position.y = -0.6;
     lean.x = lean.z = 0; spinSpeed = 5.2;
     rebuild();
-    setHint('<span>外から押さえると、すぼまる</span><span>内側から押さえると、広がる</span><br><span>押さえたまま上へなぞると、のびる</span><br>' +
+    setHint('<span>器を<b>押さえる</b>と、すぼまる</span><span><b>外へなぞる</b>と、広がる</span><br><span><b>上へなぞる</b>と、のびる</span><br>' +
             '<span class="view">余白を上下になぞると、のぞき込める</span><span class="view">' + (COARSE ? '2本指でつまむと、拡大・縮小' : 'ホイールで拡大・縮小') + '</span>');
     $('btnNext').textContent = '釉薬をかける'; $('btnNext').classList.remove('hide', 'fadeout'); $('btnAgain').classList.add('hide');
     goView(24, 1);
@@ -851,13 +898,24 @@
     clay.Ht = clay.H; clay.rt.set(clay.r); clay.off = Math.min(clay.off, 0.35); rebuild();
     prepareGlazeSurface(); clearGlaze();
     fired.m = 0; composite();
-    potMat.map = compTex; potMat.roughness = 0.93; potMat.bumpScale = 0.004; potMat.envMapIntensity = 0.4; potMat.needsUpdate = true;
+    potMat.map = compTex; potMat.roughnessMap = roughTex; potMat.roughness = 1; potMat.bumpScale = 0.004; potMat.envMapIntensity = 0.7; potMat.needsUpdate = true;
     spinSpeed = 0.5; sensor.base = null;
-    setHint('<span>器にふれているあいだ、釉薬がかかる</span><br><span>' +
-            (sensor.ok || COARSE ? 'スマホを傾けると、釉薬が流れる' : '余白をなぞると器が傾いて、釉薬が流れる') + '</span>' +
-            (COARSE ? '<br><span class="view">余白をなぞっても、傾けられる</span>' : ''));
+    coach = { step: -1, pour: 0, lean: 0, t: 0 }; setCoach(0);
     $('btnNext').textContent = '窯に入れる';
     goView(20, 1);
+  }
+
+  // 釉薬の案内：色をえらんで押さえる → 傾ける → 重ねる／窯へ、を一つずつ出す
+  let coach = { step: -1, pour: 0, lean: 0, t: 0 };
+  function setCoach(n) {
+    if (coach.step === n) return;
+    coach.step = n; coach.t = 0;
+    const tiltLine = sensor.ok ? '<span><i class="phone"></i><b>スマホをゆっくり傾ける</b></span><br><span>器も傾いて、低いほうへ釉薬が流れる</span>'
+      : COARSE ? '<span><b>器のまわりの余白を、指でなぞる</b></span><br><span>器が傾いて、低いほうへ釉薬が流れる</span>'
+               : '<span><b>器のまわりの余白をドラッグする</b></span><br><span>器が傾いて、低いほうへ釉薬が流れる</span>';
+    setHint(n === 0 ? '<span>下の色をえらんで、<b>器を指で押さえる</b></span><br><span>押さえているあいだ、釉薬がそそがれる</span>'
+          : n === 1 ? tiltLine
+                    : '<span>色を変えて、重ねてもいい</span><br><span>よければ、<b>窯に入れる</b></span>');
   }
 
   const kiln = { T: 20, heat: 0, blow: 0, t: 0 };
@@ -867,7 +925,7 @@
   }
   async function startKiln() {
     if (stage !== 'glaze' || busy) return;
-    busy = true;
+    busy = true; $('target').classList.remove('on'); $('stream').classList.remove('on');
     ensureAudio();
     try { await initMic(); } catch (e) {}
     endTouchAction();
@@ -885,8 +943,9 @@
       for (let k = 0; k < GN; k++) gWet[k] = 0;
       potMat.roughnessMap = roughTex; potMat.roughness = 1; potMat.envMapIntensity = 0.3; potMat.needsUpdate = true;
       composite();
-      setHint('<span>' + (mic.ok ? '息を吹きかけると、火が強まる' : '画面を長押しすると、風が送られて火が強まる') + '</span>' +
-              (mic.ok ? '<br><span class="view">画面の長押しでも、風を送れる</span>' : '') + '<br><span>いい色になったら、窯から出す</span>');
+      setHint(mic.ok ? '<span>スマホの下のほうへ、<b>ふーっと息を吹く</b></span><br><span>火が強まって、温度が上がる</span><br><span class="view">画面の長押しでも、風を送れる</span>'
+                     : '<span><b>画面を長押し</b>すると、風が送られる</span><br><span>火が強まって、温度が上がる</span>');
+      $('blowLabel').textContent = mic.ok ? '息' : '風';
       $('btnNext').textContent = '窯から出す'; $('btnNext').classList.add('fadeout');
       view.pitch = 14; view.zoom = 1; view.to = null; placeCamera();
     });
@@ -895,7 +954,7 @@
   let coolT = 0;
   function startCool() {
     if (stage !== 'kiln') return;
-    stage = 'cool'; coolT = 0; endTouchAction(); stopMic();
+    stage = 'cool'; coolT = 0; endTouchAction(); stopMic(); $('blowBar').style.width = '0';
     $('btnNext').classList.add('fadeout'); $('hint').classList.add('gone');
     fired.over = smoothstep(1300, 1420, fired.peak);
     for (const f of fired.flashes) f.a = clamp(f.k * (0.25 + fired.blow * 0.05) * smoothstep(1000, 1250, fired.peak), 0, 0.75);
@@ -1064,7 +1123,9 @@
       if (moved || contact) rebuild();
       slumpCool = Math.max(0, slumpCool - dt);
       const tRaw = clay.V / surfaceArea(clay.H, clay.r);
-      if (slumpCool === 0 && (tRaw < T_SLUMP || (clay.off > 0.85 && tRaw < 0.085))) slump();
+      if (slumpCool === 0 && (tRaw < T_SLUMP || (clay.off > 0.92 && tRaw < 0.055))) slump();
+      else if (tRaw < 0.056 && !thinWarned) { thinWarned = true; toast('薄くなってきた。そっと', 1600); }   // へたる前に知らせる
+      else if (tRaw > 0.075) thinWarned = false;
       const thin = 1 - clamp((tRaw - T_SLUMP) / 0.1, 0, 1);
       const wob = 0.002 + 0.02 * thin * clamp(clay.H / 2, 0, 1) + 0.075 * clay.off;      // 芯のぶれ
       pot.position.x = wob; pot.rotation.z = -wob * 1.1;
@@ -1081,23 +1142,42 @@
       if (sensor.ok) {
         if (!sensor.base) sensor.base = { b: sensor.beta, g: sensor.gamma };
         sx = clamp((sensor.gamma - sensor.base.g) / 30, -1, 1); sz = clamp((sensor.beta - sensor.base.b) / 30, -1, 1);
-        if (Math.abs(sx) + Math.abs(sz) > 0.5 && hintCount < 3) countHint(3);
       }
       const tx = clamp(sx + lean.dragX, -1, 1), tz = clamp(sz + lean.dragZ, -1, 1), k = Math.min(1, dt * 8);
       lean.x += (tx - lean.x) * k; lean.z += (tz - lean.z) * k;
+      let streaming = false;
       if (pouring) {
         const h = hitPot(pouring.x, pouring.y);
         if (h) {
           const uf = h.u * GW;
           if (h.kind === 'out') pourAt(uf, (1 - (h.j - 1) / (N - 1)) * (GH - 1), dt); else pourInside(uf, dt);
+          streaming = true; coach.pour += dt;
+          const c = GLAZES[glazeSel].rgb.map(v => Math.round(lerp(v, 0.93, 0.12) * 255)).join(','), st = $('stream'), len = Math.min(190, pouring.y - 8);
+          st.style.left = pouring.x + 'px'; st.style.top = (pouring.y - len) + 'px'; st.style.height = len + 'px';
+          st.style.background = 'linear-gradient(to bottom, rgba(' + c + ',0), rgba(' + c + ',.95) 35%)';
         }
       }
+      $('stream').classList.toggle('on', streaming);
+      inner.wet = Math.max(0, inner.wet - dt * 0.11);
+      // 案内を進める
+      coach.t += dt;
+      if (Math.hypot(lean.x, lean.z) > 0.35) coach.lean += dt;
+      if (coach.step === 0 && coach.pour > 0.6) setCoach(1);
+      else if (coach.step === 1 && (coach.lean > 1.2 || coach.t > 14)) setCoach(2);
+      const tg = $('target');
+      if (coach.step === 0 && !pouring) {                      // 最初だけ、ふれる場所を示す
+        axisPt.set(0, clay.H * 0.72, clay.r[Math.round((N - 1) * 0.72)]).project(camera);
+        tg.style.left = ((axisPt.x * 0.5 + 0.5) * window.innerWidth) + 'px'; tg.style.top = ((-axisPt.y * 0.5 + 0.5) * window.innerHeight) + 'px';
+        tg.classList.add('on');
+      } else tg.classList.remove('on');
       if (glazeWet) {
         const c = Math.cos(angle), s = Math.sin(angle);           // 傾きを、回っている器から見た向きに直す
         stepGlaze(dt, lean.x * c - lean.z * s, lean.x * s + lean.z * c, 1);
       }
-      if (glazeDirty) composite();
+      compClock += dt;
+      if (glazeDirty || (glazeWet && compClock > 0.2)) { composite(); compClock = 0; }
     }
+    else if (coach.step !== -1) { coach.step = -1; $('target').classList.remove('on'); $('stream').classList.remove('on'); }   // 釉薬の段階を出たら、しるしを片づける
     tilt.rotation.z += (-lean.x * 0.3 - tilt.rotation.z) * Math.min(1, dt * 10);
     tilt.rotation.x += (lean.z * 0.3 - tilt.rotation.x) * Math.min(1, dt * 10);
 
@@ -1107,7 +1187,7 @@
       kiln.t += dt;
       const b = Math.max(blowPress ? 0.85 : 0, readMic());
       kiln.blow += (b - kiln.blow) * Math.min(1, dt * (b > kiln.blow ? 6 : 2.5));
-      if (kiln.blow > 0.3 && hintCount < 3 && kiln.t > 1) { hintCount += dt * 0.8; if (hintCount >= 3) $('hint').classList.add('gone'); }
+      if (kiln.blow > 0.3 && kiln.t > 1) { hintCount += dt; if (hintCount >= 6) $('hint').classList.add('gone'); }
       const target = 780 + 660 * kiln.blow;
       kiln.T += (target - kiln.T) * dt * (target > kiln.T ? 0.32 : 0.11);
       fired.peak = Math.max(fired.peak, kiln.T); fired.blow += kiln.blow * dt;
@@ -1127,7 +1207,8 @@
         : kiln.T >= 1100 ? '釉薬が溶けていく'
         : fired.soak > 0 ? '火が弱まっている' : (mic.ok ? '息を吹いて、温度を上げる' : '長押しで風を送って、温度を上げる');
       if (kiln.T > 600) $('btnNext').classList.remove('fadeout');
-      if (Math.random() < dt * (2 + 10 * kiln.heat + 14 * kiln.blow)) crackle();
+      if (Math.random() < dt * (2 + 8 * kiln.heat) * (mic.ok ? 0.4 : 1)) crackle();
+      $('blowBar').style.width = Math.round(kiln.blow * 100) + '%';
     }
     if (cooling) {
       coolT += dt;
@@ -1177,9 +1258,10 @@
       setGain(audio.rub.g, shaping ? friction * 0.5 : 0, 0.04);
       audio.rub.f.frequency.setTargetAtTime(560 + friction * 520, audio.ctx.currentTime, 0.06);
       setGain(audio.pour.g, pouring ? 0.14 : glazeWet && stage === 'glaze' ? 0.025 : 0, 0.12);
-      setGain(audio.roar.g, inKiln ? 0.12 + 0.3 * kiln.heat + 0.28 * kiln.blow : cooling ? 0.1 * kiln.heat : 0, 0.15);
-      audio.roar.f.frequency.setTargetAtTime(280 + 500 * kiln.blow, audio.ctx.currentTime, 0.1);
-      setGain(audio.hiss.g, inKiln ? 0.05 * kiln.heat + 0.22 * kiln.blow : 0, 0.1);
+      const quiet = mic.ok ? 0.45 : 1;                         // マイク使用中は、自分の音を拾って火が強まり続けないよう控えめに
+      setGain(audio.roar.g, (inKiln ? 0.12 + 0.3 * kiln.heat + (mic.ok ? 0 : 0.28 * kiln.blow) : cooling ? 0.1 * kiln.heat : 0) * quiet, 0.3);
+      audio.roar.f.frequency.setTargetAtTime(280 + 350 * kiln.heat, audio.ctx.currentTime, 0.3);
+      setGain(audio.hiss.g, inKiln && !mic.ok ? 0.05 * kiln.heat + 0.22 * kiln.blow : 0, 0.1);
     }
 
     renderer.render(scene, camera);
